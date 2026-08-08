@@ -25,6 +25,11 @@ def query_service(request: Request) -> QueryService:
     return request.app.state.query_service  # type: ignore[no-any-return]
 
 
+def app_settings(request: Request) -> Settings:
+    """The settings the app was built with, not whatever the process environment holds."""
+    return getattr(request.app.state, "settings", None) or get_settings()
+
+
 SessionDep = Annotated[AsyncSession, Depends(db_session)]
-SettingsDep = Annotated[Settings, Depends(get_settings)]
+SettingsDep = Annotated[Settings, Depends(app_settings)]
 QueryServiceDep = Annotated[QueryService, Depends(query_service)]

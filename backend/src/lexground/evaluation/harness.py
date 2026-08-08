@@ -21,6 +21,17 @@ from lexground.evaluation.metrics import (
     reciprocal_rank,
 )
 from lexground.pipeline import QueryService
+from lexground.synthesis.providers import SynthesisError
+
+SCORED_METRICS = (
+    "recall_at_5",
+    "ndcg_at_10",
+    "mrr",
+    "citation_precision",
+    "citation_recall",
+    "quote_fidelity",
+    "refusal_accuracy",
+)
 
 
 class Thresholds(BaseModel):
@@ -30,6 +41,7 @@ class Thresholds(BaseModel):
     ndcg_at_10: float = 0.70
     mrr: float = 0.75
     citation_precision: float = 0.90
+    citation_recall: float = 0.90
     quote_fidelity: float = 0.95
     refusal_accuracy: float = 0.90
     groundedness: float = 0.90
@@ -103,12 +115,19 @@ class EvaluationHarness:
         latencies: list[float] = []
         records: list[dict[str, object]] = []
         rows: list[EvalCase] = []
+        failures_by_case: list[str] = []
         total_cost = 0.0
 
         for case in cases:
-            outcome = await self._service.ask(
-                session, case.question, language=case.language, persist=False
-            )
+            try:
+                outcome = await self._service.ask(
+                    session, case.question, language=case.language, persist=False
+                )
+            except SynthesisError as error:
+                failures_by_case.append(f"{case.id}: {error}")
+                scored.append(dict.fromkeys(SCORED_METRICS, 0.0))
+                records.append({"case_id": case.id, "question": case.question, "error": str(error)})
+                continue
             latencies.append(float(outcome.latency_ms))
             total_cost += outcome.cost_usd
 
@@ -125,8 +144,9 @@ class EvaluationHarness:
                 scores["ndcg_at_10"] = ndcg_at_k(found, relevant, 10)
                 scores["mrr"] = reciprocal_rank(found, relevant)
 
-                precision, _ = citation_scores(actual_citations, case.expected_citations)
+                precision, recall = citation_scores(actual_citations, case.expected_citations)
                 scores["citation_precision"] = precision
+                scores["citation_recall"] = recall
                 scores["quote_fidelity"] = self._quote_fidelity(outcome)
                 scores["refusal_accuracy"] = 0.0 if not answer.answerable else 1.0
 
@@ -168,6 +188,8 @@ class EvaluationHarness:
 
         metrics = aggregate(scored, latencies)
         passed, failures = self._thresholds.evaluate(metrics)
+        failures = failures_by_case + failures
+        passed = passed and not failures_by_case
 
         if persist:
             run = EvalRun(

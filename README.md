@@ -23,19 +23,46 @@ provisions, English and Spanish. Reproduce with `make eval`.
 | `recall_at_5` | 0.906 | 0.85 | The governing provision stopped reaching the context window |
 | `ndcg_at_10` | 0.806 | 0.75 | It still surfaces, but buried under distractors |
 | `mrr` | 0.741 | 0.70 | It surfaces late — the first hit is usually wrong |
+| `citation_recall` | 0.625 | 0.60 | The answer failed to cite the provision it should rest on |
 | `citation_precision` | 0.625 | 0.60 | The answer cites an article it did not rest on |
 | `quote_fidelity` | 1.000 | 0.95 | A supporting quote is not verbatim in the chunk it cites |
 | `refusal_accuracy` | 0.865 | — | Out-of-corpus questions get answered instead of declined |
-| `latency_p95_ms` | 10 | 500 | Retrieval got slow |
+| `latency_p95_ms` | 16 | 500 | Retrieval got slow |
 
 These are the **offline profile**: deterministic extractive synthesis, no provider API
 key, which is what CI runs so the pipeline is hermetic and free. `citation_precision` is
-capped at ~0.63 by that backend — it can only ever cite the top-ranked chunk. Running
-`make eval-judge` swaps in Claude synthesis plus an LLM groundedness judge and grades
-against `data/thresholds.json`, which adds the `groundedness` floor.
+capped at ~0.63 by that backend — it can only ever cite the top-ranked chunk.
 
-I have not published numbers for the judged profile, because I have not run it at a
-sample size worth quoting.
+### With a real model generating the answers
+
+`make eval-judge` swaps in a live provider for both synthesis and the groundedness judge.
+Measured over **five runs** on DeepSeek (`deepseek-chat`, which the API served as
+`deepseek-v4-flash`), $0.015 per run:
+
+| Metric | min | mean | max | spread |
+|---|---:|---:|---:|---:|
+| `citation_recall` | 0.875 | **0.919** | 0.969 | 0.094 |
+| `refusal_accuracy` | 0.892 | **0.930** | 0.973 | 0.081 |
+| `quote_fidelity` | 0.859 | **0.914** | 0.969 | 0.110 |
+| `citation_precision` | 0.623 | **0.688** | 0.747 | 0.124 |
+| `groundedness` | 0.483 | **0.610** | 0.710 | 0.227 |
+
+Two things to read off this.
+
+**Generation metrics are not stable enough to gate tightly, and retrieval metrics are.**
+The three retrieval numbers were byte-identical across all five runs — same index, same
+embedder, no sampling. Every generation metric moved, and groundedness moved by 0.23
+between two runs of unchanged code. A gate set just under a single observed run would go
+red on noise. The judged floors therefore sit below the observed minimum, and 37 cases is
+too small a golden set to do better; more cases or repeated sampling per case is the fix,
+not a tighter threshold.
+
+**Abstention belongs in the model, and the numbers say so.** `refusal_accuracy` is 0.93
+generating versus 0.86 extractive — the model reads the context and decides it cannot
+answer, which no retrieval score threshold managed (see below). `groundedness` at 0.61 is
+the honest weak spot: roughly a third of answers assert something the cited provision does
+not quite say. That is the number I would work on next, and it is visible precisely
+because it is measured.
 
 ---
 
@@ -88,6 +115,10 @@ Every one of these shipped into a passing test suite and was found by measuremen
   language column when no filter was given. Found by an integration test, not a unit test.
 - **A structured-output schema the API would have rejected.** Pydantic omits defaulted
   fields from `required`, and structured outputs reject a partial one.
+- **The prompt's own context header was corrupting citations.** Blocks were labelled
+  `[1] {pin cite} — {act title}`, and the model copied the whole line as the citation.
+  Fixing the header moved quote fidelity 0.81 → 0.97 and citation precision 0.61 → 0.75.
+  It read as the model fabricating quotes; it was the prompt being ambiguous.
 
 ---
 
@@ -123,9 +154,15 @@ make check      # everything CI runs: lint, types, tests, gate
 
 `make help` lists the rest.
 
-With `ANTHROPIC_API_KEY` exported, synthesis switches from the extractive baseline to
-Claude automatically — no config change — and `make eval-judge` adds the groundedness
-judge.
+Export `LEXGROUND_ANTHROPIC_API_KEY` or `LEXGROUND_DEEPSEEK_API_KEY` and synthesis
+switches from the extractive baseline to that provider automatically — no config change.
+`make eval-judge` then adds the groundedness judge.
+
+The two providers are not interchangeable under the hood. Anthropic enforces the answer
+schema server-side, so a response is valid by construction. DeepSeek offers a JSON *mode*
+— syntactically valid, shape unguaranteed — so its provider puts the schema in the prompt
+and validates with a bounded retry. That difference is the reason the provider interface
+exists rather than a base-URL swap.
 
 ### Trying it
 

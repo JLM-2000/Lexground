@@ -5,7 +5,7 @@ from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 EmbeddingBackend = Literal["fastembed", "hash"]
-SynthesisBackend = Literal["claude", "extractive"]
+SynthesisBackend = Literal["anthropic", "deepseek", "extractive"]
 
 ASYNC_DRIVER_PREFIX = "postgresql+asyncpg://"
 
@@ -27,9 +27,14 @@ class Settings(BaseSettings):
         return value
 
     anthropic_api_key: str | None = None
-    synthesis_model: str = "claude-opus-5"
-    judge_model: str = "claude-opus-5"
+    anthropic_model: str = "claude-opus-5"
     synthesis_effort: Literal["low", "medium", "high", "xhigh", "max"] = "medium"
+
+    deepseek_api_key: str | None = None
+    deepseek_model: str = "deepseek-chat"
+
+    llm_provider: SynthesisBackend | None = None
+    """Overrides auto-detection. Leave unset to pick whichever key is configured."""
 
     embedding_backend: EmbeddingBackend = "hash"
     embedding_model: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -50,7 +55,22 @@ class Settings(BaseSettings):
 
     @property
     def synthesis_backend(self) -> SynthesisBackend:
-        return "claude" if self.anthropic_api_key else "extractive"
+        if self.llm_provider:
+            return self.llm_provider
+        if self.anthropic_api_key:
+            return "anthropic"
+        if self.deepseek_api_key:
+            return "deepseek"
+        return "extractive"
+
+    @property
+    def synthesis_model(self) -> str:
+        backend = self.synthesis_backend
+        if backend == "anthropic":
+            return self.anthropic_model
+        if backend == "deepseek":
+            return self.deepseek_model
+        return "extractive"
 
 
 @lru_cache

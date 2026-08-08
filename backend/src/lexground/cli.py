@@ -14,7 +14,7 @@ from lexground.db.models import Base
 from lexground.db.session import dispose_engine, init_engine, session_scope
 from lexground.evaluation.golden import load_golden_set
 from lexground.evaluation.harness import EvaluationHarness, Thresholds
-from lexground.evaluation.judge import GroundednessJudge
+from lexground.evaluation.judge import build_judge
 from lexground.ingest.fetch import EurLexClient
 from lexground.ingest.runner import CorpusManifest, Ingestor, index_version
 from lexground.main import build_query_service
@@ -84,12 +84,9 @@ async def evaluate(
     manifest = CorpusManifest.load(manifest_path)
     version = index_version(manifest, settings.embedding_model)
 
-    judge = None
-    if use_judge:
-        if not settings.anthropic_api_key:
-            print("judge requested but no API key configured; skipping", file=sys.stderr)
-        else:
-            judge = GroundednessJudge(settings)
+    judge = build_judge(settings) if use_judge else None
+    if use_judge and judge is None:
+        print("judge requested but no provider key configured; skipping", file=sys.stderr)
 
     harness = EvaluationHarness(build_query_service(settings), thresholds, judge)
     async with session_scope() as session:

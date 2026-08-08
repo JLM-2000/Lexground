@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from lexground.config import Settings
 from lexground.retrieval.types import RetrievedChunk
-from lexground.synthesis.answerer import harden_schema
+from lexground.synthesis.providers import LLMProvider, build_provider, harden_schema
 from lexground.synthesis.schema import GroundedAnswer
 
 JUDGE_SYSTEM_PROMPT = """\
@@ -36,14 +36,8 @@ class JudgeVerdict(BaseModel):
 class GroundednessJudge:
     """LLM-as-judge over answer faithfulness."""
 
-    def __init__(self, settings: Settings) -> None:
-        from anthropic import AsyncAnthropic
-
-        self._settings = settings
-        self._client = AsyncAnthropic(
-            api_key=settings.anthropic_api_key,
-            timeout=settings.request_timeout_seconds,
-        )
+    def __init__(self, provider: LLMProvider) -> None:
+        self._provider = provider
         self._schema = harden_schema(JudgeVerdict.model_json_schema())
 
     async def evaluate(
@@ -56,38 +50,27 @@ class GroundednessJudge:
             for index, chunk in enumerate(blocks, start=1)
         )
 
-        response = await self._client.messages.create(
-            model=self._settings.judge_model,
+        completion = await self._provider.complete_json(
+            system=JUDGE_SYSTEM_PROMPT,
+            user=(
+                f"<question>{question}</question>\n\n"
+                f"<cited_sources>\n{context}\n</cited_sources>\n\n"
+                f"<answer>{answer.answer}</answer>"
+            ),
+            schema=self._schema,
             max_tokens=2048,
-            system=[
-                {
-                    "type": "text",
-                    "text": JUDGE_SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            output_config={
-                "effort": "medium",
-                "format": {"type": "json_schema", "schema": self._schema},
-            },
-            messages=[
-                {
-                    "role": "user",
-                    "content": (
-                        f"<question>{question}</question>\n\n"
-                        f"<cited_sources>\n{context}\n</cited_sources>\n\n"
-                        f"<answer>{answer.answer}</answer>"
-                    ),
-                }
-            ],
         )
 
-        if response.stop_reason == "refusal":
+        if completion.refused:
             return JudgeVerdict(
                 grounded=False,
                 unsupported_claims=[],
                 rationale="Judge declined to evaluate this case.",
             )
 
-        payload = "".join(block.text for block in response.content if block.type == "text")
-        return JudgeVerdict.model_validate(json.loads(payload))
+        return JudgeVerdict.model_validate(json.loads(completion.payload))
+
+
+def build_judge(settings: Settings) -> GroundednessJudge | None:
+    provider = build_provider(settings)
+    return None if provider is None else GroundednessJudge(provider)

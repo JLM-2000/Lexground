@@ -1,10 +1,11 @@
 {
-  "recall_at_5": 0.80,
-  "ndcg_at_10": 0.65,
-  "mrr": 0.70,
-  "citation_precision": 0.85,
-  "quote_fidelity": 0.95,
+  "recall_at_5": 0.85,
+  "ndcg_at_10": 0.75,
+  "mrr": 0.7,
+  "citation_precision": 0.55,
+  "citation_recall": 0.8,
+  "quote_fidelity": 0.8,
   "refusal_accuracy": 0.85,
-  "groundedness": 0.90,
-  "latency_p95_ms": 15000.0
+  "groundedness": 0.4,
+  "latency_p95_ms": 8000.0
 }

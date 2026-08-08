@@ -17,9 +17,12 @@ Quote verbatim — do not paraphrase into the quote field.
 4. If the context does not answer the question, set answerable to false and explain what \
 is missing. Refusing on thin context is correct behaviour, not a failure. Do not fall \
 back on prior knowledge of the law.
-5. Cite the pin cite exactly as it appears in the block header. Do not renumber articles, \
-infer subdivisions, or merge two provisions into one citation.
-6. Answer in the language of the question.
+5. The pin cite is the text on the header line after the [n] marker, and nothing else. \
+Copy it character for character. Do not append the act's title, renumber articles, infer \
+subdivisions, or merge two provisions into one citation.
+6. Cite only the blocks a claim actually rests on. An extra citation that merely looks \
+related is wrong.
+7. Answer in the language of the question.
 
 Legal text rewards precision over fluency. Prefer the statute's own wording, keep the \
 answer to what was asked, and do not add practical advice the sources do not support.\
@@ -29,10 +32,7 @@ answer to what was asked, and do not add practical advice the sources do not sup
 def format_context(chunks: list[RetrievedChunk]) -> str:
     blocks = []
     for marker, chunk in enumerate(chunks, start=1):
-        blocks.append(
-            f"[{marker}] {chunk.citation} — {chunk.document_title}\n"
-            f"<source>{chunk.text.strip()}</source>"
-        )
+        blocks.append(f"[{marker}] {chunk.citation}\n<source>{chunk.text.strip()}</source>")
     return "\n\n".join(blocks)
 
 

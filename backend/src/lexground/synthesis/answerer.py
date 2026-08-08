@@ -2,35 +2,31 @@ from __future__ import annotations
 
 import json
 from abc import ABC, abstractmethod
-from typing import Any
 
 from lexground.config import Settings
 from lexground.retrieval.types import RetrievalResult
 from lexground.synthesis.prompts import SYSTEM_PROMPT, build_user_prompt
+from lexground.synthesis.providers import (
+    LLMProvider,
+    SynthesisError,
+    build_provider,
+    harden_schema,
+)
 from lexground.synthesis.schema import AnswerOutcome, Citation, GroundedAnswer
-
-INPUT_COST_PER_MTOK = 5.00
-OUTPUT_COST_PER_MTOK = 25.00
 
 WEAK_CONTEXT_REFUSAL = (
     "Retrieval did not surface a provision close enough to the question to answer from. "
     "Answering would require relying on knowledge outside the indexed corpus."
 )
 
+MODEL_REFUSAL = "The model declined to answer this request."
 
-def harden_schema(schema: dict[str, Any]) -> dict[str, Any]:
-    """Close every object and mark every property required."""
-    if schema.get("type") == "object":
-        schema["additionalProperties"] = False
-        if properties := schema.get("properties"):
-            schema["required"] = sorted(properties)
-    for key in ("properties", "$defs"):
-        for value in schema.get(key, {}).values():
-            if isinstance(value, dict):
-                harden_schema(value)
-    if isinstance(items := schema.get("items"), dict):
-        harden_schema(items)
-    return schema
+
+def _refused(reason: str, model: str = "extractive") -> AnswerOutcome:
+    return AnswerOutcome(
+        answer=GroundedAnswer(answerable=False, answer="", citations=[], refusal_reason=reason),
+        model=model,
+    )
 
 
 class Answerer(ABC):
@@ -46,14 +42,7 @@ class ExtractiveAnswerer(Answerer):
 
     async def answer(self, question: str, retrieval: RetrievalResult) -> AnswerOutcome:
         if retrieval.weak_context or not retrieval.chunks:
-            return AnswerOutcome(
-                answer=GroundedAnswer(
-                    answerable=False,
-                    answer="",
-                    citations=[],
-                    refusal_reason=WEAK_CONTEXT_REFUSAL,
-                )
-            )
+            return _refused(WEAK_CONTEXT_REFUSAL)
 
         top = retrieval.chunks[0]
         excerpt = top.text.strip()
@@ -69,77 +58,53 @@ class ExtractiveAnswerer(Answerer):
         )
 
 
-class ClaudeAnswerer(Answerer):
-    def __init__(self, settings: Settings) -> None:
-        from anthropic import AsyncAnthropic
+class GeneratedAnswerer(Answerer):
+    """Composes an answer with whichever provider is configured."""
 
-        self._settings = settings
-        self._client = AsyncAnthropic(
-            api_key=settings.anthropic_api_key,
-            timeout=settings.request_timeout_seconds,
-        )
+    def __init__(self, provider: LLMProvider) -> None:
+        self._provider = provider
         self._schema = harden_schema(GroundedAnswer.model_json_schema())
 
     async def answer(self, question: str, retrieval: RetrievalResult) -> AnswerOutcome:
         if retrieval.weak_context or not retrieval.chunks:
-            return AnswerOutcome(
-                answer=GroundedAnswer(
-                    answerable=False,
-                    answer="",
-                    citations=[],
-                    refusal_reason=WEAK_CONTEXT_REFUSAL,
-                ),
-                model=self._settings.synthesis_model,
-            )
+            return _refused(WEAK_CONTEXT_REFUSAL, self._provider.model)
 
-        response = await self._client.messages.create(
-            model=self._settings.synthesis_model,
+        completion = await self._provider.complete_json(
+            system=SYSTEM_PROMPT,
+            user=build_user_prompt(question, retrieval.chunks),
+            schema=self._schema,
             max_tokens=4096,
-            system=[
-                {
-                    "type": "text",
-                    "text": SYSTEM_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            output_config={
-                "effort": self._settings.synthesis_effort,
-                "format": {"type": "json_schema", "schema": self._schema},
-            },
-            messages=[{"role": "user", "content": build_user_prompt(question, retrieval.chunks)}],
         )
 
-        usage = response.usage
-        cost = (
-            usage.input_tokens / 1_000_000 * INPUT_COST_PER_MTOK
-            + usage.output_tokens / 1_000_000 * OUTPUT_COST_PER_MTOK
-        )
-
-        if response.stop_reason == "refusal":
+        if completion.refused:
             return AnswerOutcome(
                 answer=GroundedAnswer(
-                    answerable=False,
-                    answer="",
-                    citations=[],
-                    refusal_reason="The model declined to answer this request.",
+                    answerable=False, answer="", citations=[], refusal_reason=MODEL_REFUSAL
                 ),
-                input_tokens=usage.input_tokens,
-                output_tokens=usage.output_tokens,
-                cost_usd=cost,
-                model=response.model,
+                input_tokens=completion.input_tokens,
+                output_tokens=completion.output_tokens,
+                cost_usd=completion.cost_usd(),
+                model=completion.model,
             )
 
-        payload = "".join(block.text for block in response.content if block.type == "text")
+        try:
+            answer = GroundedAnswer.model_validate(json.loads(completion.payload))
+        except Exception as error:
+            raise SynthesisError(
+                f"{self._provider.name} returned an off-schema answer: {error}"
+            ) from error
+
         return AnswerOutcome(
-            answer=GroundedAnswer.model_validate(json.loads(payload)),
-            input_tokens=usage.input_tokens,
-            output_tokens=usage.output_tokens,
-            cost_usd=cost,
-            model=response.model,
+            answer=answer,
+            input_tokens=completion.input_tokens,
+            output_tokens=completion.output_tokens,
+            cost_usd=completion.cost_usd(),
+            model=completion.model,
         )
 
 
 def build_answerer(settings: Settings) -> Answerer:
-    if settings.synthesis_backend == "claude":
-        return ClaudeAnswerer(settings)
-    return ExtractiveAnswerer(settings)
+    provider = build_provider(settings)
+    if provider is None:
+        return ExtractiveAnswerer(settings)
+    return GeneratedAnswerer(provider)

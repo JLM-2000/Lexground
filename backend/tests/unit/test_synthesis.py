@@ -7,8 +7,15 @@ from lexground.config import Settings
 from lexground.evaluation.golden import GoldenCase, load_golden_set
 from lexground.evaluation.harness import Thresholds
 from lexground.retrieval.types import RetrievalResult, RetrievedChunk
-from lexground.synthesis.answerer import ExtractiveAnswerer, harden_schema
+from lexground.synthesis.answerer import ExtractiveAnswerer
 from lexground.synthesis.prompts import build_user_prompt, format_context
+from lexground.synthesis.providers import (
+    Completion,
+    SynthesisError,
+    build_provider,
+    extract_json_object,
+    harden_schema,
+)
 from lexground.synthesis.schema import GroundedAnswer
 
 
@@ -98,12 +105,43 @@ class TestExtractiveAnswerer:
         assert outcome.cost_usd == 0.0
 
 
-class TestSettingsBackendSelection:
-    def test_no_key_means_extractive(self) -> None:
-        assert Settings(anthropic_api_key=None).synthesis_backend == "extractive"
+def settings(**overrides: object) -> Settings:
+    """Ignore any developer .env so provider selection is asserted, not inherited."""
+    base: dict[str, object] = {
+        "anthropic_api_key": None,
+        "deepseek_api_key": None,
+        "llm_provider": None,
+    }
+    return Settings(**{**base, **overrides})  # type: ignore[arg-type]
 
-    def test_key_present_means_claude(self) -> None:
-        assert Settings(anthropic_api_key="sk-test").synthesis_backend == "claude"
+
+class TestProviderSelection:
+    def test_no_key_means_extractive(self) -> None:
+        assert settings().synthesis_backend == "extractive"
+
+    def test_anthropic_key_selects_anthropic(self) -> None:
+        assert settings(anthropic_api_key="sk-test").synthesis_backend == "anthropic"
+
+    def test_deepseek_key_selects_deepseek(self) -> None:
+        assert settings(deepseek_api_key="sk-test").synthesis_backend == "deepseek"
+
+    def test_anthropic_wins_when_both_are_configured(self) -> None:
+        chosen = settings(anthropic_api_key="a", deepseek_api_key="d").synthesis_backend
+        assert chosen == "anthropic"
+
+    def test_explicit_provider_overrides_detection(self) -> None:
+        chosen = settings(
+            anthropic_api_key="a", deepseek_api_key="d", llm_provider="deepseek"
+        ).synthesis_backend
+        assert chosen == "deepseek"
+
+    def test_reported_model_follows_the_backend(self) -> None:
+        assert settings(deepseek_api_key="d").synthesis_model == "deepseek-chat"
+        assert settings(anthropic_api_key="a").synthesis_model == "claude-opus-5"
+        assert settings().synthesis_model == "extractive"
+
+    def test_no_provider_is_built_without_a_key(self) -> None:
+        assert build_provider(settings()) is None
 
 
 class TestGoldenSet:
@@ -178,3 +216,31 @@ class TestThresholds:
         path = tmp_path / "t.json"
         path.write_text('{"recall_at_5": 0.42}', encoding="utf-8")
         assert Thresholds.load(path).recall_at_5 == 0.42
+
+
+class TestJsonRecovery:
+    def test_extracts_a_bare_object(self) -> None:
+        assert extract_json_object('{"a": 1}') == '{"a": 1}'
+
+    def test_strips_surrounding_prose_and_fences(self) -> None:
+        wrapped = 'Here you go:\n```json\n{"a": 1}\n```\nHope that helps.'
+        assert extract_json_object(wrapped) == '{"a": 1}'
+
+    def test_keeps_nested_objects_intact(self) -> None:
+        assert extract_json_object('noise {"a": {"b": 2}} noise') == '{"a": {"b": 2}}'
+
+    def test_raises_when_there_is_no_object(self) -> None:
+        with pytest.raises(SynthesisError, match="no JSON object"):
+            extract_json_object("I cannot comply.")
+
+
+class TestCompletionCost:
+    def test_prices_a_known_model(self) -> None:
+        cost = Completion("{}", 1_000_000, 1_000_000, "deepseek-chat").cost_usd()
+        assert cost == pytest.approx(0.70)
+
+    def test_unknown_model_reports_zero_rather_than_guessing(self) -> None:
+        assert Completion("{}", 1_000_000, 1_000_000, "some-new-model").cost_usd() == 0.0
+
+    def test_zero_usage_costs_nothing(self) -> None:
+        assert Completion("{}", 0, 0, "claude-opus-5").cost_usd() == 0.0

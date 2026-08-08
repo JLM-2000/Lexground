@@ -112,7 +112,14 @@ async def seeded(engine) -> AsyncIterator[None]:
 
 @pytest.fixture
 def settings() -> Settings:
-    return Settings(database_url=TEST_DATABASE_URL, anthropic_api_key=None)
+    """Pin every provider key off so a developer .env cannot change what is asserted."""
+    return Settings(
+        database_url=TEST_DATABASE_URL,
+        anthropic_api_key=None,
+        deepseek_api_key=None,
+        llm_provider=None,
+        embedding_backend="hash",
+    )
 
 
 @pytest_asyncio.fixture
