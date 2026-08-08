@@ -13,11 +13,14 @@ class GoldenCase(BaseModel):
     question: str
     language: str = "en"
     answerable: bool = True
+    expects_clarification: bool = False
     relevant_citations: list[str] = Field(default_factory=list)
     expected_citations: list[str] = Field(default_factory=list)
     notes: str = ""
 
     def model_post_init(self, _context: object) -> None:
+        if self.expects_clarification and self.answerable:
+            raise ValueError(f"case {self.id}: a clarification case cannot be answerable")
         if self.answerable and not self.relevant_citations:
             raise ValueError(f"case {self.id}: answerable case needs relevant_citations")
         if not self.expected_citations and self.answerable:

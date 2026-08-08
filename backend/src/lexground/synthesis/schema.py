@@ -20,6 +20,19 @@ class GroundedAnswer(BaseModel):
     refusal_reason: str = Field(
         default="", description="Why the context was insufficient. Empty when answerable."
     )
+    clarifying_question: str = Field(
+        default="",
+        description=(
+            "One question to put back to the reader when the sources answer the question "
+            "differently depending on a detail they did not give. Empty otherwise."
+        ),
+    )
+
+    @property
+    def outcome(self) -> str:
+        if self.answerable:
+            return "answered"
+        return "clarify" if self.clarifying_question else "refused"
 
 
 class AnswerOutcome(BaseModel):

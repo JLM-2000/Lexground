@@ -33,6 +33,7 @@ SCORED_METRICS = (
     "citation_recall",
     "quote_fidelity",
     "refusal_accuracy",
+    "clarification_accuracy",
 )
 
 
@@ -46,6 +47,7 @@ class Thresholds(BaseModel):
     citation_recall: float = 0.90
     quote_fidelity: float = 0.95
     refusal_accuracy: float = 0.90
+    clarification_accuracy: float = 0.90
     groundedness: float = 0.90
     latency_p95_ms: float = 15000.0
 
@@ -97,8 +99,13 @@ def score_quote_fidelity(answer: GroundedAnswer, chunks: list[RetrievedChunk]) -
 def score_case(case: GoldenCase, outcome: QueryOutcome) -> dict[str, float]:
     """Grade one answered question. Pure, so the scoring rules are testable alone."""
     answer = outcome.answer
+    asked = answer.outcome == "clarify"
+    clarification = {"clarification_accuracy": 1.0 if asked == case.expects_clarification else 0.0}
+
+    if case.expects_clarification:
+        return clarification
     if not case.answerable:
-        return {"refusal_accuracy": 0.0 if answer.answerable else 1.0}
+        return {"refusal_accuracy": 0.0 if answer.answerable else 1.0, **clarification}
 
     claimed = [citation.citation for citation in answer.citations]
     precision, recall = citation_scores(claimed, case.expected_citations)
@@ -108,6 +115,7 @@ def score_case(case: GoldenCase, outcome: QueryOutcome) -> dict[str, float]:
         "citation_recall": recall,
         "quote_fidelity": score_quote_fidelity(answer, outcome.retrieval.chunks),
         "refusal_accuracy": 1.0 if answer.answerable else 0.0,
+        **clarification,
     }
 
 

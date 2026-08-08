@@ -69,6 +69,27 @@ forgiving prompt.
 alongside the governing article, which costs precision while recall stays at 0.94. Whether
 that should be penalised at all is a judgement about the metric, not about the answer.
 
+### Asking instead of guessing
+
+Some questions cannot be answered until the reader says which regime governs them. "How
+long do I have to keep my records?" is five years under one act and ten under the other,
+and picking one is worse than asking which. `clarification_accuracy` scores that both ways:
+asking when the sources branch, and not asking when they do not.
+
+Prompting alone moved it from 0 of 4 ambiguous cases to 2 of 4, at the cost of one false
+positive on a clear question. The first attempt failed in a way worth recording: the model
+did not guess, it answered *both* regimes at once with correct citations for each. My rule
+said do not pick one and do not refuse, and it found a third option I had not forbidden.
+Naming that option explicitly is what moved the number.
+
+Two of four is not a solved problem, and the honest next step is a cheap pre-check that
+classifies the question against the index before synthesis rather than a longer prompt.
+
+One case was cut because the label was wrong rather than the answer: the Spanish index
+holds only one of the two acts, so with a language filter applied there is no second regime
+to be ambiguous between. Clarification labels depend on the index in a way relevance labels
+do not.
+
 ---
 
 ## Stack
@@ -76,12 +97,13 @@ that should be penalised at all is a judgement about the metric, not about the a
 | | |
 |---|---|
 | API | Python 3.12, FastAPI, SQLAlchemy 2 async, asyncpg, Pydantic 2 |
+| Sources | EUR-Lex, BOE (Spanish consolidated law), and any uploaded PDF, DOCX, HTML or text |
 | Storage | PostgreSQL 16, pgvector with an HNSW index, Postgres full-text search |
 | Retrieval | fastembed (`paraphrase-multilingual-MiniLM-L12-v2`, 384d), reciprocal rank fusion |
 | Generation | Anthropic and DeepSeek behind one provider interface |
 | Frontend | Next.js 14 App Router, TypeScript |
 | Infra | Docker Compose, Terraform (ECS Fargate, RDS, ALB, Secrets Manager), GitHub Actions |
-| Quality | 152 tests, ruff, mypy strict, evaluation gate in CI |
+| Quality | 158 tests, ruff, mypy strict, evaluation gate in CI |
 
 One Postgres instance backs both retrieval arms. I did consider a dedicated vector store
 and decided against it: one system to run, backups that cover the index and the metadata

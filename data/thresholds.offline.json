@@ -7,5 +7,6 @@
   "refusal_accuracy": 0.0,
   "groundedness": 0.0,
   "latency_p95_ms": 500.0,
-  "citation_recall": 0.6
+  "citation_recall": 0.6,
+  "clarification_accuracy": 0.0
 }

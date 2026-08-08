@@ -142,10 +142,11 @@ class TestScoreCase:
         assert scores["citation_precision"] == 0.5
         assert scores["citation_recall"] == 1.0
 
-    def test_unanswerable_case_is_graded_only_on_refusal(self) -> None:
+    def test_unanswerable_case_is_graded_on_refusal(self) -> None:
         case = GoldenCase(id="c", question="q", answerable=False)
         scores = score_case(case, outcome(refused(), []))
-        assert scores == {"refusal_accuracy": 1.0}
+        assert scores["refusal_accuracy"] == 1.0
+        assert "recall_at_5" not in scores
 
     def test_answering_an_unanswerable_question_scores_zero(self) -> None:
         case = GoldenCase(id="c", question="q", answerable=False)
@@ -153,7 +154,7 @@ class TestScoreCase:
             Citation(marker=1, citation="ADSR Art. 4(2)", supporting_quote="within 30 days")
         )
         scores = score_case(case, outcome(answer, [chunk("ADSR Art. 4(2)", ARTICLE_4)]))
-        assert scores == {"refusal_accuracy": 0.0}
+        assert scores["refusal_accuracy"] == 0.0
 
     @pytest.mark.parametrize("metric", ["recall_at_5", "citation_precision", "quote_fidelity"])
     def test_every_score_stays_within_zero_and_one(self, metric: str) -> None:
@@ -164,3 +165,43 @@ class TestScoreCase:
         )
         chunks = [chunk("ADSR Art. 4(1)", ARTICLE_4), chunk("ADSR Art. 4(2)", ARTICLE_4)]
         assert 0.0 <= score_case(case, outcome(answer, chunks))[metric] <= 1.0
+
+
+def clarifying(question: str) -> GroundedAnswer:
+    return GroundedAnswer(answerable=False, answer="", citations=[], clarifying_question=question)
+
+
+class TestClarification:
+    def test_outcome_distinguishes_refusal_from_clarification(self) -> None:
+        assert refused().outcome == "refused"
+        assert clarifying("Which act applies?").outcome == "clarify"
+        assert answered().outcome == "answered"
+
+    def test_asking_when_expected_scores_one(self) -> None:
+        case = GoldenCase(id="c", question="q", answerable=False, expects_clarification=True)
+        scores = score_case(case, outcome(clarifying("Which regime?"), []))
+        assert scores == {"clarification_accuracy": 1.0}
+
+    def test_refusing_instead_of_asking_scores_zero(self) -> None:
+        case = GoldenCase(id="c", question="q", answerable=False, expects_clarification=True)
+        assert score_case(case, outcome(refused(), []))["clarification_accuracy"] == 0.0
+
+    def test_guessing_instead_of_asking_scores_zero(self) -> None:
+        case = GoldenCase(id="c", question="q", answerable=False, expects_clarification=True)
+        answer = answered(
+            Citation(
+                marker=1, citation="ADSR Art. 6(2)", supporting_quote="retained for five years"
+            )
+        )
+        chunks = [chunk("ADSR Art. 6(2)", ARTICLE_6)]
+        assert score_case(case, outcome(answer, chunks))["clarification_accuracy"] == 0.0
+
+    def test_asking_on_a_clear_question_is_penalised(self) -> None:
+        case = GoldenCase(id="c", question="q", relevant_citations=["ADSR Art. 4"])
+        chunks = [chunk("ADSR Art. 4(2)", ARTICLE_4)]
+        scores = score_case(case, outcome(clarifying("Which one?"), chunks))
+        assert scores["clarification_accuracy"] == 0.0
+
+    def test_a_clarification_case_cannot_be_answerable(self) -> None:
+        with pytest.raises(ValueError, match="cannot be answerable"):
+            GoldenCase(id="c", question="q", answerable=True, expects_clarification=True)

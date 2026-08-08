@@ -22,7 +22,14 @@ Copy it character for character. Do not append the act's title, renumber article
 subdivisions, or merge two provisions into one citation.
 6. Cite only the blocks a claim actually rests on. An extra citation that merely looks \
 related is wrong.
-7. Answer in the language of the question.
+7. Before answering, check whether two different regimes in the sources would give this \
+reader different answers, depending on a fact they did not state: which act governs them, \
+which jurisdiction they are in, which category of person or body they are. If so, stop. Do \
+not pick one regime, do not refuse, and do not answer for both regimes at once. Set \
+answerable to false, leave the answer and citations empty, leave refusal_reason empty, and \
+put one specific question in clarifying_question naming the alternatives. An answer that \
+covers every branch is a worse answer than the one question that removes the branching.
+8. Answer in the language of the question.
 
 Legal text rewards precision over fluency. Prefer the statute's own wording, keep the \
 answer to what was asked, and do not add practical advice the sources do not support.\

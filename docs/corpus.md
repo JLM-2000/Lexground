@@ -1,6 +1,34 @@
 # Corpora
 
-Two corpora, for two different jobs.
+## Where documents come from
+
+Ingestion goes through a `DocumentSource`, so a jurisdiction is one interface away rather
+than a fork of the pipeline.
+
+| Source | What it reads | Notes |
+|---|---|---|
+| `eurlex` | EU legislation by CELEX id | Fronted by a JavaScript bot challenge; see below |
+| `boe` | Spanish consolidated law by BOE id | Open XML API, article numbering already structured |
+| `file` | Any PDF, DOCX, HTML or text file | For corpora with no public API |
+
+Adding a jurisdiction means implementing `fetch()` and returning plain text. What is *not*
+generic is the citation convention: `Art. 22(1)` suits EU and Spanish acts, while US, UK
+and German citation forms differ enough to need their own `build_citation`. That, rather
+than fetching, is the real work in a new jurisdiction, which is why the shipped set is
+small and honest instead of a long list of half-tested connectors.
+
+Anything without a public API goes through `file`, which covers every jurisdiction for
+anyone who already holds the documents.
+
+## Documents with no article structure
+
+`chunk_document()` runs the legal parser first and falls back to `chunk_prose()` when it
+finds no provisions. Prose chunks cite the nearest heading, then a page number, then a
+paragraph ordinal, so the locator is still something a reader can find in the original.
+That is what keeps quote fidelity meaningful for a medical handbook or an economics report
+rather than only for legislation.
+
+Two corpora ship, for two different jobs.
 
 ## The fixture corpus (what CI runs)
 
