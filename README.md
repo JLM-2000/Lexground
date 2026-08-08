@@ -93,22 +93,63 @@ Every one of these shipped into a passing test suite and was found by measuremen
 
 ## Running it
 
-Requires Docker, Python 3.12 and Node 20.
+Docker only. Nothing else installed, no API key, no network beyond the image pulls.
+
+```bash
+git clone https://github.com/JLM-2000/Lexground.git && cd Lexground
+make start
+```
+
+That builds both images, waits for Postgres, creates the schema, indexes the fixture
+corpus, and comes up with the API on **:8000** and the console on **:3000**. The embedding
+model is baked into the image, so the index builds with no runtime download.
+
+```bash
+make eval-docker   # run the gate; the result appears on /evaluation
+make logs          # follow the stack
+make down          # stop and drop the volumes
+```
+
+### Developing against it
 
 ```bash
 make install    # venv + backend deps + npm install
-make seed       # start Postgres, create the schema, index the fixture corpus
-make eval       # score the golden set and apply the gate
-
-make dev        # API on :8000
+make up         # Postgres only
+make seed       # schema + fixture index
+make dev        # API on :8000, reload
 make dev-ui     # console on :3000
+make check      # everything CI runs: lint, types, tests, gate
 ```
 
-`make check` runs everything CI runs. `make help` lists the rest.
+`make help` lists the rest.
 
 With `ANTHROPIC_API_KEY` exported, synthesis switches from the extractive baseline to
 Claude automatically — no config change — and `make eval-judge` adds the groundedness
 judge.
+
+### Trying it
+
+Once `make start` is up, open <http://localhost:3000>:
+
+| Ask | Expect |
+|---|---|
+| *How long does a deployer have to complete a human review?* | Answers, cites `ADSR Art. 4` |
+| *¿En qué plazo debe completarse la revisión humana?* | Same provision, Spanish chunk |
+| *How long must records of automated decisions be kept?* | `ADSR Art. 6` — not `DRRR Art. 3`, the distractor |
+| *What is the standard rate of VAT in Germany?* | Declines; nothing in the corpus supports an answer |
+
+Every answer expands into the retrieval table showing both arms' ranks per provision, so
+you can see whether a miss came from retrieval or from synthesis.
+
+```bash
+curl -s localhost:8000/health/ready
+curl -s -X POST localhost:8000/api/query \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"What is the deadline for reporting a malfunction?","language":"en"}'
+```
+
+Interactive API docs at <http://localhost:8000/docs>, Prometheus metrics at
+<http://localhost:8000/metrics>.
 
 ### The corpus
 
