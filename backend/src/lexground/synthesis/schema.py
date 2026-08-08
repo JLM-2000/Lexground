@@ -12,11 +12,7 @@ class Citation(BaseModel):
 
 
 class GroundedAnswer(BaseModel):
-    """The only shape the synthesiser is allowed to return.
-
-    `answerable` is separate from `answer` so a refusal is a first-class outcome
-    that the eval harness can score, rather than prose we have to pattern-match.
-    """
+    """The only shape the synthesiser is allowed to return."""
 
     answerable: bool
     answer: str = Field(description="Answer text with [n] markers. Empty when not answerable.")

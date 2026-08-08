@@ -21,11 +21,23 @@ from lexground.main import build_query_service
 from lexground.observability.logging import configure_logging
 from lexground.retrieval.embedder import get_embedder
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_MANIFEST = REPO_ROOT / "data" / "corpus.json"
-DEFAULT_GOLDEN = REPO_ROOT / "data" / "golden" / "cases.jsonl"
-DEFAULT_THRESHOLDS = REPO_ROOT / "data" / "thresholds.json"
-DEFAULT_CACHE = REPO_ROOT / "data" / "corpus"
+
+def data_dir() -> Path:
+    """Locate the data directory from the working directory, not the install location."""
+    override = os.environ.get("LEXGROUND_DATA_DIR")
+    if override:
+        return Path(override)
+    for candidate in (Path("data"), Path("../data")):
+        if candidate.is_dir():
+            return candidate
+    return Path("data")
+
+
+DATA = data_dir()
+DEFAULT_MANIFEST = DATA / "corpus.json"
+DEFAULT_GOLDEN = DATA / "golden" / "cases.jsonl"
+DEFAULT_THRESHOLDS = DATA / "thresholds.json"
+DEFAULT_CACHE = DATA / "corpus"
 
 
 async def init_db() -> int:

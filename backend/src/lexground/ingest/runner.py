@@ -127,10 +127,6 @@ class Ingestor:
 
 
 def index_version(manifest: CorpusManifest, embedder_name: str) -> str:
-    """Stable id for the (corpus, embedding model) pair.
-
-    Eval results are only comparable within one index version, so it is recorded on
-    every run rather than inferred later.
-    """
+    """Stable id for the (corpus, embedding model) pair."""
     payload = json.dumps(manifest.model_dump(), sort_keys=True) + embedder_name
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]

@@ -38,8 +38,6 @@ resource "aws_security_group" "api" {
   tags = { Name = "${local.name}-api" }
 }
 
-# Rules referencing another group are declared separately so the two groups can
-# reference each other without a cycle in the dependency graph.
 resource "aws_vpc_security_group_ingress_rule" "api_from_alb" {
   description                  = "Only the load balancer may reach the tasks"
   security_group_id            = aws_security_group.api.id

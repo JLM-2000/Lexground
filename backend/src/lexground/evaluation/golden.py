@@ -7,12 +7,7 @@ from pydantic import BaseModel, Field
 
 
 class GoldenCase(BaseModel):
-    """One graded question.
-
-    Relevance is keyed on pin cites rather than chunk ids so the golden set survives
-    re-ingestion and chunking changes — the thing being asserted is "the answer must
-    rest on Article 22", not "on row 4f3a…".
-    """
+    """One graded question."""
 
     id: str
     question: str

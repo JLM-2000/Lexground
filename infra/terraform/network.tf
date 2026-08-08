@@ -62,9 +62,6 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# One NAT gateway rather than one per AZ. The tasks need egress only to pull the
-# provider API; losing an AZ degrades that path but the service stays reachable
-# through the ALB. Per-AZ NAT roughly triples the standing cost of this stack.
 resource "aws_eip" "nat" {
   domain = "vpc"
   tags   = { Name = "${local.name}-nat" }

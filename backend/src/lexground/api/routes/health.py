@@ -18,8 +18,7 @@ async def health() -> dict[str, str]:
 
 @router.get("/health/ready")
 async def ready(session: SessionDep, settings: SettingsDep) -> dict[str, object]:
-    """Readiness is index-aware: an empty index means the service is up but useless,
-    and the deploy gate should treat that as not-ready rather than healthy."""
+    """Readiness is index-aware; an empty index reports degraded."""
     chunk_count = await session.scalar(select(func.count(Chunk.id))) or 0
     INDEXED_CHUNKS.set(chunk_count)
     return {

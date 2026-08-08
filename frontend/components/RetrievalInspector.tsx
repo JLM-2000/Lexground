@@ -1,10 +1,5 @@
 import type { QueryResponse } from "@/lib/api";
 
-/**
- * Shows why each provision surfaced, not just that it did. When an answer is wrong the
- * first question is always whether retrieval missed the provision or the synthesiser
- * ignored it, and the two ranks answer that without re-running anything.
- */
 export function RetrievalInspector({ result }: { result: QueryResponse }) {
   const cited = new Set(result.citations.map((citation) => citation.citation));
 

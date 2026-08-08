@@ -9,8 +9,6 @@ from lxml import html as lxml_html
 
 EURLEX_HTML_URL = "https://eur-lex.europa.eu/legal-content/{language}/TXT/HTML/?uri=CELEX:{celex}"
 
-# EUR-Lex content is freely reusable under the Commission's reuse notice
-# (Decision 2011/833/EU). Be a polite client anyway.
 USER_AGENT = "Lexground/0.1 (+https://github.com/JLM-2000/Lexground)"
 REQUEST_DELAY_SECONDS = 1.0
 MAX_ATTEMPTS = 3
@@ -21,8 +19,7 @@ _STRIP_TAGS = ("script", "style", "head", "noscript")
 
 
 class CorpusUnavailableError(RuntimeError):
-    """The source could not be read. Distinct from a parse failure so the ingest
-    runner can report an upstream problem separately from a bad document."""
+    """The source could not be read."""
 
 
 @dataclass(slots=True)
@@ -87,9 +84,7 @@ class EurLexClient:
         return FetchedDocument(celex_id, language, url, text)
 
     async def _fetch_remote(self, url: str, celex_id: str, language: str) -> str:
-        """EUR-Lex fronts its HTML views with a JavaScript bot challenge that answers
-        202 with a stub body. That is indistinguishable from success to a naive client,
-        so it is checked explicitly rather than left to fail later in the parser."""
+        """Fetch past the bot challenge, or fail naming what came back instead."""
         async with httpx.AsyncClient(
             headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"},
             timeout=60.0,

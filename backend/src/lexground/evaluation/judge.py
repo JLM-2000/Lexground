@@ -34,12 +34,7 @@ class JudgeVerdict(BaseModel):
 
 
 class GroundednessJudge:
-    """LLM-as-judge over answer faithfulness.
-
-    Deliberately narrow: the deterministic checks (citation precision, quote fidelity)
-    catch the cheap failures, and the judge is reserved for the one question they cannot
-    answer — whether the prose overstates what the sources actually say.
-    """
+    """LLM-as-judge over answer faithfulness."""
 
     def __init__(self, settings: Settings) -> None:
         from anthropic import AsyncAnthropic

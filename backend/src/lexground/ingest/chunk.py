@@ -39,10 +39,7 @@ def estimate_tokens(text: str) -> int:
 
 
 def _split_long(text: str) -> list[str]:
-    """Overflow split for the rare provision longer than the context budget.
-
-    Overlap keeps a sentence that straddles the boundary retrievable from either half.
-    """
+    """Overflow split for the rare provision longer than the context budget."""
     if len(text) <= MAX_CHARS:
         return [text]
 
@@ -62,12 +59,7 @@ def _split_long(text: str) -> list[str]:
 
 
 def chunk_units(units: list[LegalUnit], *, short_title: str, language: str) -> list[Chunk]:
-    """One chunk per citable unit.
-
-    Fixed-window chunking would cut across article boundaries and make it impossible to
-    say which provision a retrieved span belongs to. Here every chunk carries exactly
-    one pin cite, which is what makes citation accuracy measurable downstream.
-    """
+    """One chunk per citable unit."""
     chunks: list[Chunk] = []
     ordinal = 0
 

@@ -3,8 +3,6 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-# EUR-Lex publishes the same act in every official language, so the parser keys on
-# the article keyword per language rather than assuming an English corpus.
 ARTICLE_KEYWORD = {
     "en": "Article",
     "es": "Artículo",
@@ -40,8 +38,7 @@ def _article_pattern(language: str) -> re.Pattern[str]:
 
 
 def split_recitals(preamble: str) -> list[LegalUnit]:
-    """Recitals are numbered '(1) …' blocks. They are kept whole — a recital is the
-    interpretive unit courts cite, and splitting one destroys its meaning."""
+    """Recitals are numbered '(1) …' blocks."""
     units: list[LegalUnit] = []
     for block in preamble.split("\n\n"):
         match = _RECITAL.match(block.strip())
@@ -59,11 +56,7 @@ def split_recitals(preamble: str) -> list[LegalUnit]:
 
 
 def split_article_paragraphs(number: str, heading: str | None, body: str) -> list[LegalUnit]:
-    """Split an article on its numbered paragraphs.
-
-    Paragraph is the level lawyers actually cite ('Article 22(1)'), so it is the level
-    the index addresses. Articles with no numbered paragraphs stay whole.
-    """
+    """Split an article on its numbered paragraphs."""
     lines = body.split("\n\n")
     units: list[LegalUnit] = []
     current_number: str | None = None

@@ -31,8 +31,6 @@ TEXT_SEARCH_CONFIG = {
 }
 DEFAULT_TEXT_SEARCH_CONFIG = "english"
 
-# to_tsvector(regconfig, text) is immutable and so is a CASE over a stored column,
-# which is what lets the stemmed vector be a generated column instead of a trigger.
 _SEARCH_VECTOR_EXPRESSION = """
 to_tsvector(
     CASE language
@@ -47,8 +45,7 @@ to_tsvector(
 
 
 def text_search_config(language: str) -> str:
-    """The stemmer to parse a query with. It must match the one used to build the
-    stored vector, or stemmed terms will not line up."""
+    """The stemmer to parse a query with."""
     return TEXT_SEARCH_CONFIG.get(language, DEFAULT_TEXT_SEARCH_CONFIG)
 
 

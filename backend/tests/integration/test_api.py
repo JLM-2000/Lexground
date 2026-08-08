@@ -54,7 +54,6 @@ class TestRetrieval:
     async def test_lexical_arm_survives_morphology(
         self, retriever: HybridRetriever, db: AsyncSession
     ) -> None:
-        # The stored vector is stemmed, so the singular query matches plural text.
         result = await retriever.retrieve(db, "retained record", language="en")
         assert any(chunk.lexical_rank is not None for chunk in result.chunks)
 

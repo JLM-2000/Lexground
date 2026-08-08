@@ -34,8 +34,7 @@ class QueryOutcome:
 
 
 class QueryService:
-    """The one path a question takes. The API and the eval harness both call this,
-    so what CI grades is what production serves."""
+    """The one path a question takes."""
 
     def __init__(self, settings: Settings, retriever: HybridRetriever, answerer: Answerer) -> None:
         self._settings = settings

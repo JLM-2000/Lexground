@@ -15,9 +15,6 @@ resource "aws_lb_target_group" "api" {
   target_type = "ip"
   vpc_id      = aws_vpc.this.id
 
-  # Liveness, not readiness. A task that is up but serving an empty index should
-  # be visible and alarmed on, not silently pulled out of rotation by the ALB —
-  # the ECS container health check owns that decision.
   health_check {
     path                = "/health"
     matcher             = "200"

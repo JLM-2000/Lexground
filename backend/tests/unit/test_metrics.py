@@ -50,7 +50,6 @@ class TestRankedMetrics:
         assert recall_at_k(["a"], ["a", "b"], 5) == 0.5
 
     def test_recall_window_is_applied_after_dedupe(self) -> None:
-        # Without dedupe, "a" repeated would push "b" out of the top 2.
         assert recall_at_k(["a", "a", "a", "b"], ["a", "b"], 2) == 1.0
 
     def test_recall_with_no_relevant_items_is_vacuously_one(self) -> None:
@@ -70,8 +69,6 @@ class TestRankedMetrics:
         assert ndcg_at_k(["a", "b"], ["a", "b"], 10) == pytest.approx(1.0)
 
     def test_ndcg_never_exceeds_one_with_repeated_provision(self) -> None:
-        # Regression: paragraph chunks of one article used to each score a hit
-        # against an ideal ranking containing that article once.
         assert ndcg_at_k(["a", "a", "a"], ["a"], 10) <= 1.0
 
     def test_ndcg_penalises_late_hits(self) -> None:
@@ -120,7 +117,6 @@ class TestQuoteFidelity:
         assert not quote_fidelity("notify the data subject within 24 hours", self.SOURCE)
 
     def test_trivially_short_quote_fails(self) -> None:
-        # Short strings match almost any source by chance, so they prove nothing.
         assert not quote_fidelity("the", self.SOURCE)
 
 
@@ -144,6 +140,5 @@ class TestAggregation:
     def test_aggregate_means_each_metric_independently(self) -> None:
         summary = aggregate([{"recall_at_5": 1.0}, {"recall_at_5": 0.0, "mrr": 1.0}], [10.0, 20.0])
         assert summary["recall_at_5"] == 0.5
-        # mrr is absent from the first case and must not be counted as zero there.
         assert summary["mrr"] == 1.0
         assert summary["latency_p95_ms"] == 20.0

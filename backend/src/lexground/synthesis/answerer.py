@@ -9,7 +9,6 @@ from lexground.retrieval.types import RetrievalResult
 from lexground.synthesis.prompts import SYSTEM_PROMPT, build_user_prompt
 from lexground.synthesis.schema import AnswerOutcome, Citation, GroundedAnswer
 
-# USD per million tokens, Claude Opus 5.
 INPUT_COST_PER_MTOK = 5.00
 OUTPUT_COST_PER_MTOK = 25.00
 
@@ -20,13 +19,7 @@ WEAK_CONTEXT_REFUSAL = (
 
 
 def harden_schema(schema: dict[str, Any]) -> dict[str, Any]:
-    """Close every object and mark every property required.
-
-    Structured outputs reject a schema whose objects allow extra keys or leave any
-    property optional. Pydantic omits fields that carry defaults from `required`, so
-    the list is rebuilt rather than defaulted — `refusal_reason` has a default and
-    would otherwise be dropped, which the API rejects.
-    """
+    """Close every object and mark every property required."""
     if schema.get("type") == "object":
         schema["additionalProperties"] = False
         if properties := schema.get("properties"):
@@ -46,18 +39,7 @@ class Answerer(ABC):
 
 
 class ExtractiveAnswerer(Answerer):
-    """Offline fallback used when no API key is configured.
-
-    It quotes the top-ranked provision instead of composing prose. That keeps the demo
-    and the retrieval half of the eval suite runnable with no paid dependency, and keeps
-    unit tests deterministic.
-
-    It cannot abstain. Judging that none of the retrieved context answers the question
-    requires reading the context, and the only signal available here is retrieval score,
-    which the golden set shows does not separate the two cases. Runs on this backend are
-    therefore gated by data/thresholds.offline.json, which drops the refusal and
-    groundedness floors rather than pretending they were met.
-    """
+    """Offline fallback used when no API key is configured."""
 
     def __init__(self, settings: Settings) -> None:
         self._settings = settings

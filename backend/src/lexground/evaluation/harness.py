@@ -24,10 +24,7 @@ from lexground.pipeline import QueryService
 
 
 class Thresholds(BaseModel):
-    """The CI gate. A pull request that pushes any of these the wrong way fails.
-
-    Values are floors except latency, which is a ceiling.
-    """
+    """Gate thresholds. Floors, except latency_p95_ms which is a ceiling."""
 
     recall_at_5: float = 0.85
     ndcg_at_10: float = 0.70

@@ -11,12 +11,7 @@ def reciprocal_rank_fusion(
     *,
     k: int = 60,
 ) -> list[RetrievedChunk]:
-    """Fuse two ranked lists by reciprocal rank.
-
-    RRF is used rather than a weighted score blend because BM25 ranks and cosine
-    similarities are not on a comparable scale, and any fixed blend weight would
-    need re-tuning every time either side changes. Rank position is stable.
-    """
+    """Fuse two ranked lists by reciprocal rank."""
     merged: dict[uuid.UUID, RetrievedChunk] = {}
 
     for rank, chunk in enumerate(lexical, start=1):

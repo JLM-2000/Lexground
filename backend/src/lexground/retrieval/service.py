@@ -48,13 +48,7 @@ MIN_TOKEN_LENGTH = 3
 
 
 def build_tsquery(question: str) -> str:
-    """Turn a natural-language question into an OR-of-terms tsquery.
-
-    `websearch_to_tsquery` ANDs every term, so a full sentence matches nothing — no
-    single provision contains all of "how long does a deployer have to complete a human
-    review". OR semantics let ts_rank_cd rank on term coverage and proximity instead,
-    which is the behaviour the lexical arm is there to provide.
-    """
+    """Turn a natural-language question into an OR-of-terms tsquery."""
     tokens = {
         token.lower()
         for token in _TOKEN.findall(question)
@@ -130,13 +124,7 @@ class HybridRetriever:
         )
 
     def _is_weak(self, lexical: list[RetrievedChunk], dense: list[RetrievedChunk]) -> bool:
-        """Answerability is judged on absolute match strength, never on fused rank.
-
-        RRF scores depend only on position, so the top result always scores
-        1/(k+1) whether it is the governing article or the closest thing in an
-        unrelated act. Gating on that would make the system answer everything.
-        A question is answerable when at least one arm clears its own floor.
-        """
+        """Answerability is judged on absolute match strength, never on fused rank."""
         best_lexical = max((chunk.lexical_score for chunk in lexical), default=0.0)
         best_dense = max((chunk.dense_score for chunk in dense), default=0.0)
         return (

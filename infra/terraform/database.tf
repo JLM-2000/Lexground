@@ -9,17 +9,13 @@ resource "aws_db_subnet_group" "this" {
   tags       = { Name = local.name }
 }
 
-# pgvector ships with RDS Postgres 15.2+; no custom extension packaging needed.
-# It still has to be enabled per-database, which `lexground init-db` does.
 resource "aws_db_parameter_group" "this" {
   name_prefix = "${local.name}-"
   family      = "postgres16"
 
   parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements"
-    # Static parameters only take effect after a reboot, so changing this
-    # replaces the group and requires an instance restart.
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements"
     apply_method = "pending-reboot"
   }
 

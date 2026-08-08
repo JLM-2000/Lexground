@@ -29,12 +29,7 @@ def _l2_normalise(vector: list[float]) -> list[float]:
 
 
 class HashEmbedder(Embedder):
-    """Deterministic bag-of-words hashing embedder.
-
-    Not competitive with a trained model, but it is dependency-free, stable across
-    runs and machines, and good enough that retrieval tests assert real behaviour
-    rather than mocks.
-    """
+    """Deterministic bag-of-words hashing embedder."""
 
     def __init__(self, dimensions: int = 384) -> None:
         self.dimensions = dimensions
@@ -57,13 +52,7 @@ class HashEmbedder(Embedder):
 
 
 class FastEmbedEmbedder(Embedder):
-    """Multilingual ONNX embeddings.
-
-    E5 models are trained with asymmetric "query:"/"passage:" prefixes and score poorly
-    without them; sentence-transformers models are trained symmetrically and score
-    poorly *with* them. The prefix is therefore keyed off the model family rather than
-    applied unconditionally.
-    """
+    """Multilingual ONNX embeddings."""
 
     def __init__(self, model_name: str, dimensions: int) -> None:
         from fastembed import TextEmbedding
@@ -80,7 +69,8 @@ class FastEmbedEmbedder(Embedder):
     def embed_query(self, text: str) -> list[float]:
         if self._uses_e5_prefixes:
             text = f"query: {text}"
-        return next(iter(self._model.embed([text]))).tolist()
+        vector: list[float] = next(iter(self._model.embed([text]))).tolist()
+        return vector
 
 
 @lru_cache
@@ -91,8 +81,7 @@ def _build(backend: str, model_name: str, dimensions: int) -> Embedder:
 
 
 def get_embedder(settings: Settings) -> Embedder:
-    """Cached on the fields that define the model, not on the Settings object —
-    loading an ONNX model per request would dominate retrieval latency."""
+    """Cached on the fields that define the model, not on the Settings object."""
     return _build(
         settings.embedding_backend, settings.embedding_model, settings.embedding_dimensions
     )

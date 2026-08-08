@@ -23,12 +23,7 @@ _PART_SUFFIX = re.compile(r"\s*\[\d+/\d+\]\s*$")
 
 
 def citation_key(citation: str) -> str:
-    """Reduce a pin cite to the provision it belongs to.
-
-    The golden set asserts "this answer must rest on Article 22", not "on the exact
-    paragraph split the current chunker happens to produce". Keying on the provision
-    keeps the labels valid when chunking changes.
-    """
+    """Reduce a pin cite to the provision it belongs to."""
     stripped = _PART_SUFFIX.sub("", citation.strip())
     stripped = _PARAGRAPH_SUFFIX.sub("", stripped).strip()
     return normalise(stripped)
@@ -39,13 +34,7 @@ def keys(citations: Sequence[str]) -> list[str]:
 
 
 def dedupe(items: Sequence[str]) -> list[str]:
-    """Collapse a ranking to distinct entries, keeping the best-ranked occurrence.
-
-    Retrieval returns chunks but relevance is judged per provision, and one provision
-    spans several paragraph chunks. Left undeduplicated, three chunks of Article 4 count
-    as three hits against an ideal ranking that contains Article 4 once — which is how
-    nDCG ends up above 1.0.
-    """
+    """Collapse a ranking to distinct entries, keeping the best-ranked occurrence."""
     seen: set[str] = set()
     ordered: list[str] = []
     for item in items:
@@ -92,11 +81,7 @@ def ndcg_at_k(retrieved: Sequence[str], relevant: Sequence[str], k: int) -> floa
 
 
 def citation_scores(actual: Sequence[str], expected: Sequence[str]) -> tuple[float, float]:
-    """Precision and recall over pin cites the answer actually claims.
-
-    Distinct from retrieval recall: retrieval can surface the right article while the
-    answer still cites the wrong one, and that is the failure a reader would notice.
-    """
+    """Precision and recall over pin cites the answer actually claims."""
     if not expected:
         return (1.0, 1.0) if not actual else (0.0, 1.0)
     if not actual:
@@ -108,11 +93,7 @@ def citation_scores(actual: Sequence[str], expected: Sequence[str]) -> tuple[flo
 
 
 def quote_fidelity(quote: str, source_text: str) -> bool:
-    """True when the claimed supporting quote really is a span of the cited chunk.
-
-    A deterministic guard against fabricated quotes — no judge model required, so it
-    runs on every case in CI at zero cost.
-    """
+    """True when the claimed supporting quote really is a span of the cited chunk."""
     normalised_quote = normalise(quote)
     if len(normalised_quote) < 12:
         return False

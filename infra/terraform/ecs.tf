@@ -59,8 +59,6 @@ resource "aws_iam_role_policy_attachment" "task_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# The execution role pulls secrets at task start. The task role stays empty:
-# application code has no reason to call AWS, so it is granted nothing.
 data "aws_iam_policy_document" "read_secrets" {
   statement {
     actions = ["secretsmanager:GetSecretValue"]
@@ -122,8 +120,6 @@ resource "aws_ecs_task_definition" "api" {
 
     secrets = local.api_secrets
 
-    # Readiness is index-aware, so a task whose index is empty never joins the
-    # target group and a bad ingest cannot silently replace a working deployment.
     healthCheck = {
       command     = ["CMD-SHELL", "python -c \"import urllib.request,sys,json; r=json.load(urllib.request.urlopen('http://localhost:8000/health/ready')); sys.exit(0 if r['status']=='ok' else 1)\""]
       interval    = 15
@@ -162,8 +158,6 @@ resource "aws_ecs_service" "api" {
     container_port   = 8000
   }
 
-  # Roll forward only while at least the old capacity is healthy, and roll back
-  # automatically when the new tasks fail their health checks.
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
   health_check_grace_period_seconds  = 90

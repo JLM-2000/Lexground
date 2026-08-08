@@ -25,8 +25,6 @@ def chunk(citation: str, *, lexical: float = 0.0, dense: float = 0.0) -> Retriev
 
 class TestTsQuery:
     def test_terms_are_ored_not_anded(self) -> None:
-        # ANDing a full sentence matches no single provision, which is why
-        # websearch_to_tsquery is not used here.
         assert " | " in build_tsquery("how long must records be kept")
 
     def test_short_stopwords_are_dropped(self) -> None:
@@ -74,7 +72,6 @@ class TestReciprocalRankFusion:
         assert fused[0].lexical_score == 0.4
 
     def test_score_depends_only_on_rank_position(self) -> None:
-        # The property that makes fused score unusable as an answerability signal.
         top_relevant = reciprocal_rank_fusion([chunk("a", lexical=5.0)], [], k=60)
         top_irrelevant = reciprocal_rank_fusion([chunk("b", lexical=0.01)], [], k=60)
         assert top_relevant[0].fused_score == top_irrelevant[0].fused_score
