@@ -1,0 +1,91 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    # Never deploy a commit whose evaluation gate failed.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Assume deployment role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Tagged by commit SHA, never :latest — a rollback has to be able to name
+      # the exact prior image, and the ECR repository is tag-immutable.
+      - name: Build and push
+        working-directory: backend
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: lexground-prod
+          TAG: ${{ github.sha }}
+        run: |
+          docker build -t "$REGISTRY/$REPOSITORY:$TAG" .
+          docker push "$REGISTRY/$REPOSITORY:$TAG"
+          echo "image=$REGISTRY/$REPOSITORY:$TAG" >> "$GITHUB_ENV"
+
+      - name: Roll out
+        env:
+          CLUSTER: lexground-prod
+          SERVICE: lexground-prod
+        run: |
+          aws ecs describe-task-definition --task-definition "$SERVICE" \
+            --query taskDefinition > task.json
+          python - <<'PY'
+          import json, os
+          task = json.load(open("task.json"))
+          for field in ("taskDefinitionArn", "revision", "status", "requiresAttributes",
+                        "compatibilities", "registeredAt", "registeredBy"):
+              task.pop(field, None)
+          task["containerDefinitions"][0]["image"] = os.environ["image"]
+          json.dump(task, open("task.json", "w"))
+          PY
+          revision=$(aws ecs register-task-definition --cli-input-json file://task.json \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
+            --task-definition "$revision" > /dev/null
+
+      # The service's deployment circuit breaker rolls back on its own if the new
+      # tasks fail their index-aware health check. Waiting here makes that visible
+      # in the job result instead of leaving a green deploy over a failed rollout.
+      - name: Wait for the rollout to stabilise
+        env:
+          CLUSTER: lexground-prod
+          SERVICE: lexground-prod
+        run: aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE"
+
+      - name: Smoke-test the deployed index
+        run: |
+          for attempt in $(seq 1 10); do
+            body=$(curl -fsS "${{ vars.API_URL }}/health/ready") && \
+              echo "$body" | grep -q '"status":"ok"' && echo "$body" && exit 0
+            sleep 10
+          done
+          echo "readiness never reported ok" >&2
+          exit 1

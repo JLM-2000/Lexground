@@ -1,0 +1,152 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LEXGROUND_DATABASE_URL: postgresql+asyncpg://lexground:lexground@localhost:5432/lexground
+  LEXGROUND_TEST_DATABASE_URL: postgresql+asyncpg://lexground:lexground@localhost:5432/lexground_test
+  FASTEMBED_CACHE_PATH: ${{ github.workspace }}/.cache/fastembed
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: lexground
+          POSTGRES_PASSWORD: lexground
+          POSTGRES_DB: lexground
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U lexground"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        working-directory: backend
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install -e ".[dev,embeddings]"
+
+      - name: Lint
+        working-directory: backend
+        run: |
+          .venv/bin/ruff check src tests
+          .venv/bin/ruff format --check src tests
+
+      - name: Types
+        working-directory: backend
+        run: .venv/bin/mypy src
+        continue-on-error: true
+
+      - name: Test
+        working-directory: backend
+        run: .venv/bin/pytest -q --cov=lexground --cov-report=term-missing
+
+      # The embedding model is a fixed dependency of the index, so the gate's
+      # numbers are only comparable when it is pinned and cached.
+      - name: Cache embedding model
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.FASTEMBED_CACHE_PATH }}
+          key: fastembed-paraphrase-multilingual-MiniLM-L12-v2
+
+      - name: Build the index
+        working-directory: backend
+        env:
+          LEXGROUND_EMBEDDING_BACKEND: fastembed
+        run: |
+          .venv/bin/lexground init-db
+          .venv/bin/lexground ingest \
+            --manifest ../data/fixtures/corpus.json \
+            --cache-dir ../data/fixtures/corpus \
+            --offline
+
+      # The gate. A change that drops retrieval quality or lets a fabricated
+      # quote through fails the build the same way a broken test would.
+      - name: Evaluation gate
+        working-directory: backend
+        env:
+          LEXGROUND_EMBEDDING_BACKEND: fastembed
+        run: |
+          .venv/bin/lexground evaluate \
+            --golden ../data/fixtures/golden.jsonl \
+            --manifest ../data/fixtures/corpus.json \
+            --thresholds ../data/thresholds.offline.json \
+            --report ../reports/eval.json
+
+      - name: Publish evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-report
+          path: reports/eval.json
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Types
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  infrastructure:
+    name: Infrastructure
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.8.5"
+
+      - name: Format
+        working-directory: infra/terraform
+        run: tofu fmt -check -recursive
+
+      - name: Validate
+        working-directory: infra/terraform
+        run: |
+          tofu init -backend=false -input=false
+          tofu validate
