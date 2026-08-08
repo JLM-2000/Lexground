@@ -19,7 +19,6 @@ jobs:
   deploy:
     name: Deploy to ECS
     runs-on: ubuntu-latest
-    # Never deploy a commit whose evaluation gate failed.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       github.event.workflow_run.conclusion == 'success'
@@ -37,8 +36,6 @@ jobs:
       - id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # Tagged by commit SHA, never :latest — a rollback has to be able to name
-      # the exact prior image, and the ECR repository is tag-immutable.
       - name: Build and push
         working-directory: backend
         env:
@@ -71,9 +68,6 @@ jobs:
           aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" \
             --task-definition "$revision" > /dev/null
 
-      # The service's deployment circuit breaker rolls back on its own if the new
-      # tasks fail their index-aware health check. Waiting here makes that visible
-      # in the job result instead of leaving a green deploy over a failed rollout.
       - name: Wait for the rollout to stabilise
         env:
           CLUSTER: lexground-prod
