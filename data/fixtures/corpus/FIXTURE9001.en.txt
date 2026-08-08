@@ -1,0 +1,157 @@
+(1) Automated decision systems are increasingly used to allocate access to credit, employment, housing and public services. Where such systems operate without meaningful human involvement, individuals may be unable to understand or contest outcomes that materially affect them.
+
+(2) A consistent Union framework is necessary because divergent national rules on automated decision systems fragment the internal market and lower the level of protection afforded to individuals.
+
+(3) This Regulation should apply to deployers established in the Union and to deployers established in a third country where the decision concerns a person located in the Union.
+
+(4) The right to obtain human review is central to this Regulation. A review is meaningful only where the reviewer has authority to alter the outcome and access to the information on which the original decision was based.
+
+(5) Transparency obligations should be proportionate. A deployer should not be required to disclose information that would reveal a trade secret, provided the individual still receives an explanation of the principal factors that determined the outcome.
+
+(6) Retention of decision records enables supervision and redress. A record that is deleted before the limitation period expires deprives the individual of an effective remedy.
+
+(7) Supervisory authorities should be able to impose penalties that are effective, proportionate and dissuasive, taking into account the deployer's turnover and the number of individuals affected.
+
+(8) Small deployers should benefit from a lighter registration regime, without prejudice to the substantive obligations under Chapter II.
+
+Article 1
+
+Subject matter and scope
+
+1. This Regulation lays down harmonised rules on the deployment of automated decision systems that produce legal effects concerning natural persons or similarly significantly affect them.
+
+2. This Regulation applies to deployers established in the Union, and to deployers established in a third country where the automated decision concerns a natural person located in the Union.
+
+3. This Regulation does not apply to automated decision systems used exclusively for personal or household activities, nor to systems used solely for internal research that produces no decision affecting a natural person.
+
+Article 2
+
+Definitions
+
+1. For the purposes of this Regulation, 'automated decision system' means a system that generates an output used to make, or to substantially inform, a decision concerning a natural person without meaningful human involvement at the point of decision.
+
+2. 'Deployer' means a natural or legal person that uses an automated decision system under its own authority in the course of its activities.
+
+3. 'Meaningful human involvement' means review by a natural person who has the competence and the authority to alter the outcome, and who has access to the input data and the principal factors relied upon.
+
+4. 'Significant effect' means an effect on a person's access to credit, employment, education, housing, healthcare, insurance or a public service, or an effect of comparable materiality.
+
+Article 3
+
+Prohibited deployments
+
+1. The deployment of an automated decision system is prohibited where the decision is based, wholly or in part, on the inference of a person's political opinions, trade union membership, religious beliefs, health status or sexual orientation.
+
+2. The deployment of an automated decision system that assigns a general-purpose score to a natural person on the basis of unrelated social behaviour, and that is used to determine access to services beyond the context in which the data were collected, is prohibited.
+
+3. Paragraph 1 does not apply where the inference is strictly necessary for the provision of healthcare and the individual has given explicit consent.
+
+Article 4
+
+Right to human review
+
+1. A person subject to a decision falling within the scope of this Regulation has the right to obtain review of that decision by a natural person.
+
+2. A request for review shall be submitted within 60 days of the person being informed of the decision. The deployer shall complete the review and communicate the outcome within 30 days of receiving the request.
+
+3. Where the complexity of the request so requires, the period referred to in paragraph 2 may be extended once by a further 30 days. The deployer shall inform the person of the extension and the reasons for it within the initial period.
+
+4. The reviewer shall not be the person who configured the automated decision system for the deployment in question.
+
+5. Where the review results in a different outcome, the deployer shall apply the reviewed outcome and inform the person of the reasons for the change.
+
+Article 5
+
+Information to be provided at the time of the decision
+
+1. At the time a decision is communicated, the deployer shall inform the person that the decision was produced by an automated decision system, and shall provide the identity and contact details of the deployer.
+
+2. The deployer shall provide a description of the principal factors that determined the outcome, expressed in clear and plain language, together with an indication of their relative weight.
+
+3. The deployer shall inform the person of the right to human review under Article 4 and of the time limit for exercising it.
+
+4. Paragraph 2 does not require the disclosure of information that would reveal a trade secret. Where the deployer relies on this paragraph, it shall nevertheless provide a meaningful explanation of the basis for the outcome.
+
+Article 6
+
+Record keeping
+
+1. The deployer shall keep a record of each decision falling within the scope of this Regulation, comprising the input data, the output, the version identifier of the system, and the date and time of the decision.
+
+2. Records shall be retained for five years from the date of the decision.
+
+3. Where a review has been requested under Article 4, the record shall be retained until the expiry of two years from the conclusion of the review, or the period in paragraph 2, whichever is later.
+
+4. Records shall be made available to the supervisory authority on request within 15 days.
+
+Article 7
+
+Accuracy testing
+
+1. Before a system is placed into deployment, and at least annually thereafter, the deployer shall test the system for accuracy and for disparate outcomes across the groups identified in Article 3(1).
+
+2. Where testing reveals a disparity that the deployer cannot justify on objective grounds, the deployer shall suspend the deployment until the disparity is remedied.
+
+3. The deployer shall document the methodology, the results, and any remedial action taken, and shall retain that documentation for five years.
+
+Article 8
+
+Registration
+
+1. A deployer shall register each automated decision system with the supervisory authority before placing it into deployment.
+
+2. The registration shall state the purpose of the system, the categories of person affected, and the identity of the natural person responsible for reviews under Article 4.
+
+3. By way of derogation from paragraph 1, a deployer with fewer than 50 employees and an annual turnover not exceeding EUR 10 million shall instead submit a simplified notification within 30 days of placing the system into deployment.
+
+4. The derogation in paragraph 3 does not apply where the system is used to determine access to credit or employment.
+
+Article 9
+
+Incident notification
+
+1. Where a deployer becomes aware that an automated decision system has produced erroneous decisions affecting more than 100 persons, it shall notify the supervisory authority without undue delay and in any event within 72 hours of becoming aware.
+
+2. The notification shall describe the nature of the malfunction, the number of persons affected, the likely consequences, and the measures taken or proposed.
+
+3. Where the notification cannot be made within 72 hours, it shall be accompanied by the reasons for the delay.
+
+4. The deployer shall communicate the malfunction to the affected persons without undue delay where the erroneous decisions are likely to result in a significant effect.
+
+Article 10
+
+Supervisory authority
+
+1. Each Member State shall designate one or more independent supervisory authorities responsible for monitoring the application of this Regulation.
+
+2. The supervisory authority shall have the power to obtain access to records kept under Article 6, to require the suspension of a deployment, and to impose the penalties provided for in Article 11.
+
+3. The supervisory authority shall handle complaints lodged by persons subject to decisions falling within the scope of this Regulation.
+
+Article 11
+
+Penalties
+
+1. Infringements of Article 3 shall be subject to administrative fines of up to EUR 20 000 000 or, in the case of an undertaking, up to 4 % of total worldwide annual turnover of the preceding financial year, whichever is higher.
+
+2. Infringements of Articles 4 to 9 shall be subject to administrative fines of up to EUR 10 000 000 or, in the case of an undertaking, up to 2 % of total worldwide annual turnover of the preceding financial year, whichever is higher.
+
+3. In deciding the amount of the fine, the supervisory authority shall have regard to the nature and duration of the infringement, the number of persons affected, the degree of responsibility of the deployer, and any relevant previous infringements.
+
+4. Member States shall lay down rules on other penalties applicable to infringements of this Regulation and shall take all measures necessary to ensure that they are implemented.
+
+Article 12
+
+Right to lodge a complaint
+
+1. Without prejudice to any other administrative or judicial remedy, a person has the right to lodge a complaint with a supervisory authority where that person considers that a decision concerning them infringes this Regulation.
+
+2. The supervisory authority shall inform the complainant of the progress and outcome of the complaint within three months of receiving it.
+
+Article 13
+
+Entry into force and application
+
+1. This Regulation shall enter into force on the twentieth day following that of its publication in the Official Journal of the European Union.
+
+2. It shall apply from 1 January 2026, with the exception of Article 8, which shall apply from 1 July 2026.

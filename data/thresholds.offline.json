@@ -1,0 +1,10 @@
+{
+  "recall_at_5": 0.85,
+  "ndcg_at_10": 0.75,
+  "mrr": 0.70,
+  "citation_precision": 0.60,
+  "quote_fidelity": 0.95,
+  "refusal_accuracy": 0.0,
+  "groundedness": 0.0,
+  "latency_p95_ms": 500.0
+}

@@ -1,0 +1,91 @@
+(1) Digital records held by public bodies underpin accountability, historical research and the exercise of individual rights. Inconsistent retention practice across the Union undermines all three.
+
+(2) Retention periods should be set by reference to the purpose for which a record was created, rather than by reference to the medium on which it is stored.
+
+(3) The right of access to archived records should be balanced against the protection of personal data contained in them.
+
+(4) Destruction of records should be documented, so that the absence of a record can be distinguished from its concealment.
+
+Article 1
+
+Subject matter
+
+This Regulation lays down harmonised rules on the retention, archiving and disposal of digital records held by public bodies of the Member States.
+
+Article 2
+
+Scope
+
+1. This Regulation applies to digital records created or received by a public body in the course of its official functions.
+
+2. This Regulation does not apply to records of automated decisions, which are governed by Regulation (EU) 2024/9001.
+
+3. This Regulation does not apply to records classified in the interests of national security.
+
+Article 3
+
+General retention periods
+
+1. Records documenting a decision affecting the rights of a natural person shall be retained for ten years from the date of the decision.
+
+2. Records of financial transactions shall be retained for seven years from the end of the financial year to which they relate.
+
+3. Records of routine internal correspondence that document no decision shall be retained for two years.
+
+4. Where two periods under this Article could apply to the same record, the longer period shall prevail.
+
+Article 4
+
+Extension of retention periods
+
+1. A retention period shall be extended where the record is the subject of pending litigation, an ongoing audit, or a request for access that has not been resolved.
+
+2. The extension shall run until six months after the conclusion of the proceeding that gave rise to it.
+
+3. A public body shall record the reason for each extension and the date on which it was applied.
+
+Article 5
+
+Disposal
+
+1. A record shall be disposed of within twelve months of the expiry of its retention period.
+
+2. Disposal shall be irreversible and shall be documented in a disposal register recording the identifier of the record, the date of disposal, and the authorising officer.
+
+3. The disposal register shall itself be retained permanently.
+
+Article 6
+
+Archiving
+
+1. A record of enduring historical, legal or administrative value shall be transferred to the national archive rather than disposed of.
+
+2. The national archive shall make transferred records available for public inspection thirty years after their creation, subject to Article 7.
+
+Article 7
+
+Access to archived records
+
+1. Access to an archived record shall be refused, in whole or in part, where disclosure would reveal personal data relating to a living person and no overriding public interest in disclosure exists.
+
+2. A refusal under paragraph 1 shall be reasoned in writing and shall indicate the parts of the record that have been withheld.
+
+3. A person refused access may apply to the supervisory authority for review within 60 days of the refusal.
+
+Article 8
+
+Format and integrity
+
+1. A public body shall retain digital records in a format that remains readable for the duration of the retention period.
+
+2. Where a format is migrated, the public body shall verify and document that the content and structure of the record are preserved.
+
+3. A public body shall apply measures sufficient to detect unauthorised alteration of a retained record.
+
+Article 9
+
+Penalties
+
+1. Member States shall lay down rules on penalties applicable to infringements of this Regulation.
+
+2. Penalties for the premature destruction of a record documenting a decision affecting the rights of a natural person shall be effective, proportionate and dissuasive.

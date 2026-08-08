@@ -1,0 +1,22 @@
+{
+  "documents": [
+    {
+      "celex_id": "FIXTURE9001",
+      "short_title": "ADSR",
+      "title": "SYNTHETIC FIXTURE — Regulation (EU) 2024/9001 on Automated Decision Systems. Not real law; drafted for hermetic testing.",
+      "languages": ["en", "es"],
+      "version": "original",
+      "jurisdiction": "EU",
+      "adopted_on": "2024-03-15"
+    },
+    {
+      "celex_id": "FIXTURE9002",
+      "short_title": "DRRR",
+      "title": "SYNTHETIC FIXTURE — Regulation (EU) 2024/9002 on Digital Records Retention. Not real law; drafted for hermetic testing.",
+      "languages": ["en"],
+      "version": "original",
+      "jurisdiction": "EU",
+      "adopted_on": "2024-05-02"
+    }
+  ]
+}

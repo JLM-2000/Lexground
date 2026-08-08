@@ -1,0 +1,91 @@
+(1) Los sistemas de decisión automatizada se utilizan cada vez más para determinar el acceso al crédito, al empleo, a la vivienda y a los servicios públicos. Cuando dichos sistemas funcionan sin intervención humana significativa, las personas pueden verse imposibilitadas de comprender o impugnar resultados que les afectan materialmente.
+
+(2) Es necesario un marco coherente de la Unión, dado que la divergencia de las normas nacionales sobre sistemas de decisión automatizada fragmenta el mercado interior y reduce el nivel de protección de las personas.
+
+(3) El presente Reglamento debe aplicarse a los responsables del despliegue establecidos en la Unión y a los establecidos en un tercer país cuando la decisión afecte a una persona situada en la Unión.
+
+(4) El derecho a obtener una revisión humana es central en el presente Reglamento. Una revisión solo es significativa cuando el revisor tiene autoridad para modificar el resultado y acceso a la información en la que se basó la decisión original.
+
+(5) Las obligaciones de transparencia deben ser proporcionadas. No debe exigirse al responsable del despliegue que revele información que desvele un secreto comercial, siempre que la persona reciba una explicación de los factores principales que determinaron el resultado.
+
+(6) La conservación de los registros de decisión permite la supervisión y la reparación. Un registro suprimido antes de que expire el plazo de prescripción priva a la persona de una tutela efectiva.
+
+Artículo 1
+
+Objeto y ámbito de aplicación
+
+1. El presente Reglamento establece normas armonizadas sobre el despliegue de sistemas de decisión automatizada que producen efectos jurídicos sobre personas físicas o les afectan significativamente de modo similar.
+
+2. El presente Reglamento se aplica a los responsables del despliegue establecidos en la Unión y a los establecidos en un tercer país cuando la decisión automatizada afecte a una persona física situada en la Unión.
+
+3. El presente Reglamento no se aplica a los sistemas de decisión automatizada utilizados exclusivamente para actividades personales o domésticas.
+
+Artículo 2
+
+Definiciones
+
+1. A efectos del presente Reglamento, se entenderá por «sistema de decisión automatizada» un sistema que genera un resultado utilizado para adoptar, o para informar sustancialmente, una decisión relativa a una persona física sin intervención humana significativa en el momento de la decisión.
+
+2. Se entenderá por «responsable del despliegue» toda persona física o jurídica que utilice un sistema de decisión automatizada bajo su propia autoridad en el ejercicio de sus actividades.
+
+3. Se entenderá por «intervención humana significativa» la revisión por una persona física que posea la competencia y la autoridad para modificar el resultado y que tenga acceso a los datos de entrada y a los factores principales considerados.
+
+Artículo 3
+
+Despliegues prohibidos
+
+1. Queda prohibido el despliegue de un sistema de decisión automatizada cuando la decisión se base, total o parcialmente, en la inferencia de las opiniones políticas, la afiliación sindical, las creencias religiosas, el estado de salud o la orientación sexual de una persona.
+
+2. Queda prohibido el despliegue de un sistema de decisión automatizada que atribuya a una persona física una puntuación de carácter general sobre la base de comportamientos sociales no relacionados y que se utilice para determinar el acceso a servicios ajenos al contexto en el que se recogieron los datos.
+
+3. El apartado 1 no se aplicará cuando la inferencia sea estrictamente necesaria para la prestación de asistencia sanitaria y la persona haya dado su consentimiento explícito.
+
+Artículo 4
+
+Derecho a revisión humana
+
+1. Toda persona sujeta a una decisión comprendida en el ámbito de aplicación del presente Reglamento tiene derecho a obtener la revisión de dicha decisión por una persona física.
+
+2. La solicitud de revisión deberá presentarse en un plazo de 60 días desde que la persona fue informada de la decisión. El responsable del despliegue completará la revisión y comunicará el resultado en un plazo de 30 días desde la recepción de la solicitud.
+
+3. Cuando la complejidad de la solicitud así lo requiera, el plazo previsto en el apartado 2 podrá prorrogarse una sola vez por otros 30 días. El responsable del despliegue informará a la persona de la prórroga y de sus motivos dentro del plazo inicial.
+
+4. El revisor no será la persona que configuró el sistema de decisión automatizada para el despliegue en cuestión.
+
+Artículo 5
+
+Información que debe facilitarse en el momento de la decisión
+
+1. En el momento en que se comunique una decisión, el responsable del despliegue informará a la persona de que la decisión fue producida por un sistema de decisión automatizada y facilitará su identidad y sus datos de contacto.
+
+2. El responsable del despliegue facilitará una descripción de los factores principales que determinaron el resultado, expresada en un lenguaje claro y sencillo, junto con una indicación de su peso relativo.
+
+3. El responsable del despliegue informará a la persona del derecho a revisión humana previsto en el artículo 4 y del plazo para ejercerlo.
+
+Artículo 6
+
+Conservación de registros
+
+1. El responsable del despliegue conservará un registro de cada decisión comprendida en el ámbito de aplicación del presente Reglamento, que incluirá los datos de entrada, el resultado, el identificador de versión del sistema y la fecha y hora de la decisión.
+
+2. Los registros se conservarán durante cinco años a partir de la fecha de la decisión.
+
+3. Los registros se pondrán a disposición de la autoridad de control, previa solicitud, en un plazo de 15 días.
+
+Artículo 9
+
+Notificación de incidentes
+
+1. Cuando un responsable del despliegue tenga conocimiento de que un sistema de decisión automatizada ha producido decisiones erróneas que afectan a más de 100 personas, lo notificará a la autoridad de control sin dilación indebida y, en todo caso, en un plazo de 72 horas desde que tuvo conocimiento de ello.
+
+2. La notificación describirá la naturaleza del fallo, el número de personas afectadas, las consecuencias probables y las medidas adoptadas o propuestas.
+
+3. Cuando la notificación no pueda realizarse en el plazo de 72 horas, deberá ir acompañada de los motivos del retraso.
+
+Artículo 11
+
+Sanciones
+
+1. Las infracciones del artículo 3 estarán sujetas a multas administrativas de hasta 20 000 000 EUR o, tratándose de una empresa, de hasta el 4 % del volumen de negocios total anual mundial del ejercicio financiero anterior, optándose por la de mayor cuantía.
+
+2. Las infracciones de los artículos 4 a 9 estarán sujetas a multas administrativas de hasta 10 000 000 EUR o, tratándose de una empresa, de hasta el 2 % del volumen de negocios total anual mundial del ejercicio financiero anterior, optándose por la de mayor cuantía.
