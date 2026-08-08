@@ -6,20 +6,31 @@ from pydantic import BaseModel, Field
 
 from lexground.config import Settings
 from lexground.retrieval.types import RetrievedChunk
+from lexground.synthesis.prompts import format_context
 from lexground.synthesis.providers import LLMProvider, build_provider, harden_schema
 from lexground.synthesis.schema import GroundedAnswer
 
 JUDGE_SYSTEM_PROMPT = """\
-You audit whether a legal answer is supported by the sources it cites.
+You audit whether a legal answer is supported by the sources supplied with it.
 
 You are not judging whether the answer is good law, well written, or complete. You are \
-judging one thing: does every legal proposition in the answer follow from the quoted \
-context blocks?
+judging one thing: does every legal proposition in the answer follow from the source \
+blocks?
 
 Mark a claim unsupported when it states a rule, threshold, exception, or obligation that \
-the cited block does not contain — including claims that are correct as a matter of law \
-but absent from the supplied text. Restating the sources in different words is supported. \
-Adding a condition, scope, or consequence the sources do not state is not.
+the sources do not contain, including claims that are correct as a matter of law but \
+absent from the supplied text. Restating a source in different words is supported. Adding \
+a condition, scope, or consequence the sources do not state is not.
+
+Two rules that decide the awkward cases:
+
+Ignore citation markers entirely. Whether the answer wrote [3] where it meant [5] is \
+scored separately and is none of your concern. Judge each proposition against the whole \
+set of sources, not against the block whose number the answer happened to write.
+
+A statement that the sources do not address something is supported when it is true of the \
+sources you were given. Saying "the text sets out no other conditions" is a claim about \
+this material, not an assertion about the law, so verify it rather than rejecting it.
 
 Report the unsupported claims verbatim from the answer.\
 """
@@ -43,18 +54,11 @@ class GroundednessJudge:
     async def evaluate(
         self, question: str, answer: GroundedAnswer, chunks: list[RetrievedChunk]
     ) -> JudgeVerdict:
-        cited = {citation.citation for citation in answer.citations}
-        blocks = [chunk for chunk in chunks if chunk.citation in cited] or chunks
-        context = "\n\n".join(
-            f"[{index}] {chunk.citation}\n<source>{chunk.text.strip()}</source>"
-            for index, chunk in enumerate(blocks, start=1)
-        )
-
         completion = await self._provider.complete_json(
             system=JUDGE_SYSTEM_PROMPT,
             user=(
                 f"<question>{question}</question>\n\n"
-                f"<cited_sources>\n{context}\n</cited_sources>\n\n"
+                f"<sources>\n{format_context(chunks)}\n</sources>\n\n"
                 f"<answer>{answer.answer}</answer>"
             ),
             schema=self._schema,

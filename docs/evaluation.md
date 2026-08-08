@@ -129,12 +129,17 @@ Two profiles in version control:
   API key, no network. `citation_precision` is floored at 0.60 because that backend can only
   cite the top-ranked chunk; `refusal_accuracy` and `groundedness` are zeroed for the reason
   above.
-- **`data/thresholds.json`** — live synthesis plus the judge, with a real `groundedness`
-  floor. Baselined on DeepSeek over five runs; the floors sit below the observed
-  minimum because the generation metrics move by up to 0.23 between runs of unchanged
-  code, while the retrieval metrics do not move at all. Re-baseline when the provider
-  or model changes — those results are no more comparable across models than across
-  index versions.
+- **`data/thresholds.json`** — live synthesis plus the judge. Baselined on DeepSeek over
+  three runs, with floors below the observed minimum. Re-baseline when the provider or
+  model changes: those results are no more comparable across models than across index
+  versions.
+
+The judge context must be built with the same `format_context()` the answerer used. An
+earlier version filtered the blocks down to the cited ones and renumbered them from 1,
+which left the answer's markers pointing at nothing. The judge dutifully reported the
+content as supported but the source as missing, and groundedness read 0.61 with a spread of
+0.23 across runs. Identical numbering took it to 0.967 with no spread. If a generation
+metric is both low and unstable, read the rationales before trusting the score.
 
 Floors sit just under measured values, so a regression trips the gate but ordinary noise
 does not. Raising a floor after an improvement is a deliberate commit, which is what keeps

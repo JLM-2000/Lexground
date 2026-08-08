@@ -43,21 +43,31 @@ Measured over **five runs** on DeepSeek (`deepseek-chat`, which the API served a
 
 | Metric | min | mean | max | spread |
 |---|---:|---:|---:|---:|
-| `citation_recall` | 0.875 | **0.919** | 0.969 | 0.094 |
-| `refusal_accuracy` | 0.892 | **0.930** | 0.973 | 0.081 |
-| `quote_fidelity` | 0.859 | **0.914** | 0.969 | 0.110 |
-| `citation_precision` | 0.623 | **0.688** | 0.747 | 0.124 |
-| `groundedness` | 0.483 | **0.610** | 0.710 | 0.227 |
+| `groundedness` | 0.967 | **0.967** | 0.967 | 0.000 |
+| `refusal_accuracy` | 0.946 | **0.946** | 0.946 | 0.000 |
+| `citation_recall` | 0.906 | **0.938** | 0.969 | 0.063 |
+| `quote_fidelity` | 0.938 | **0.948** | 0.969 | 0.031 |
+| `citation_precision` | 0.672 | **0.706** | 0.732 | 0.060 |
 
-Five runs because one was not enough to trust. The retrieval metrics do not appear in that
-table because they did not move at all: same index, same embedder, nothing sampling. Every
-generation metric did move, groundedness by 0.23 between two runs of identical code. The
-judged floors sit below the observed minimum for that reason.
+Three runs, because one is not enough to trust. The retrieval metrics are absent from that
+table because they do not move at all: same index, same embedder, nothing sampling.
 
-`refusal_accuracy` at 0.93 against 0.86 for the extractive baseline is the number that
-justifies letting the model decide when to refuse. `groundedness` at 0.61 is the weak spot:
-roughly a third of answers assert something the cited provision does not quite say. That is
-what I would work on next, and I can only see it because it is measured.
+`groundedness` was 0.61 with a spread of 0.23 until I read the judge's rationales instead
+of its scores. Six of eleven failures said some version of "the content is supported but
+source [3] does not exist". My judge was filtering the context down to the cited chunks and
+then renumbering them from 1, so the answer's markers pointed at nothing. The judge was
+right and my harness was broken. It now builds its context with the same `format_context()`
+the answerer used, so the numbering is identical by construction.
+
+The one case that still fails is the cross-reference trap the fixture corpus was built
+around: `DRRR Art. 2(2)` excludes records of automated decisions and points at the other
+act, and the model asserts the opposite. That is a real failure and the judge catches it,
+which is the evidence that the jump came from fixing a bug rather than from a more
+forgiving prompt.
+
+`citation_precision` at 0.71 is now the weak spot. The model cites a supporting recital
+alongside the governing article, which costs precision while recall stays at 0.94. Whether
+that should be penalised at all is a judgement about the metric, not about the answer.
 
 ---
 
@@ -159,10 +169,16 @@ copying the entire header line as the citation. Dropping the title took quote fi
 **One evaluation run is not a measurement.** After that fix I got groundedness 0.71 and
 nearly wrote it down as the number. Running the same code five times gave 0.71, 0.48, 0.67,
 0.57, 0.62. Meanwhile all three retrieval metrics were identical every run, because the
-index is deterministic and nothing there samples. A floor set just under one lucky run goes
-red on noise and teaches everyone to ignore CI. Judged floors sit below the observed
-minimum, the README publishes min/mean/max, and the real fix is more cases rather than a
-tighter threshold.
+index is deterministic and nothing there samples.
+
+**Then the variance turned out to be a bug of mine.** A metric swinging by 0.23 on
+unchanged code should have been the clue, and I treated it as noise to be tolerated rather
+than a symptom. When I finally read the judge's rationales instead of its scores, six of
+eleven failures said the content was supported but the cited source number did not exist.
+The judge was filtering my context down to the cited chunks and renumbering them from 1,
+while the answer's markers referred to the original numbering. Building the judge's context
+with the same function the answerer uses took groundedness to 0.967 with zero spread across
+three runs. Scores tell you a number moved; rationales tell you why.
 
 **A four-character string in a `varchar(2)` column.** Query traces wrote `"auto"` into the
 language column when no filter was set. Only the integration tests caught it, because it
