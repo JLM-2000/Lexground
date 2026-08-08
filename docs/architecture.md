@@ -143,10 +143,16 @@ The schema is hardened before it goes to the API: every object closed with
 omits fields carrying defaults from `required`, and structured outputs reject a partial one
 — `refusal_reason` would have been dropped.
 
-Two backends behind one interface. `ClaudeAnswerer` is the real path. `ExtractiveAnswerer`
-quotes the top-ranked provision instead of composing prose, which keeps the stack runnable
-and the tests deterministic with no API key — and cannot abstain, which the offline
-threshold profile accounts for honestly rather than papering over.
+`GeneratedAnswerer` composes with whichever provider is configured. `AnthropicProvider`
+enforces the schema server-side, so its responses are valid by construction.
+`DeepSeekProvider` has only a JSON mode, so it puts the schema in the prompt and validates
+with a bounded retry that feeds the error back. That asymmetry is why this is an interface
+rather than a base-URL swap.
+
+`ExtractiveAnswerer` covers the no-key path by quoting the top-ranked provision instead of
+composing prose, which keeps the stack runnable and the tests deterministic. It cannot
+abstain, which the offline threshold profile accounts for honestly rather than papering
+over.
 
 ## Observability
 
