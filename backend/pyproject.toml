@@ -1,0 +1,69 @@
+[project]
+name = "lexground"
+version = "0.1.0"
+description = "Grounded retrieval over EU regulatory law, with evaluation gates in CI"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pgvector>=0.3.6",
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "anthropic>=0.45",
+    "httpx>=0.28",
+    "lxml>=5.3",
+    "prometheus-client>=0.21",
+    "python-json-logger>=3.2",
+]
+
+[project.optional-dependencies]
+embeddings = ["fastembed>=0.5"]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "pytest-cov>=6.0",
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "httpx>=0.28",
+]
+
+[project.scripts]
+lexground = "lexground.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lexground"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+# The corpus is multilingual and the normaliser exists precisely to fold smart quotes,
+# en dashes and accented characters. Flagging them as ambiguous is noise here.
+ignore = ["RUF001", "RUF002", "RUF003"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# The engine fixture is session-scoped, so tests must share its event loop —
+# a per-test loop leaves asyncpg connections bound to a loop that has closed.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning:lexground.*"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["fastembed.*", "pgvector.*"]
+ignore_missing_imports = true

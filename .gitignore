@@ -1,0 +1,31 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+.env
+.env.local
+*.local
+
+# Cached EUR-Lex bodies. Large, reproducible, and subject to the source's terms —
+# the committed fixture corpus under data/fixtures/ is what CI runs on.
+data/corpus/*.txt
+reports/
+
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
