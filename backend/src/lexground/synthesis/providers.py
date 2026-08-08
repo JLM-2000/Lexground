@@ -8,6 +8,8 @@ from typing import Any
 
 import httpx
 
+from lexground.config import Settings
+
 logger = logging.getLogger(__name__)
 
 PRICING_USD_PER_MTOK: dict[str, tuple[float, float]] = {
@@ -195,9 +197,11 @@ class DeepSeekProvider(LLMProvider):
         await self._client.aclose()
 
 
-def build_provider(settings: Any) -> LLMProvider | None:
+def build_provider(settings: Settings) -> LLMProvider | None:
     backend = settings.synthesis_backend
     if backend == "anthropic":
+        if not settings.anthropic_api_key:
+            raise SynthesisError("provider is anthropic but no API key is configured")
         return AnthropicProvider(
             api_key=settings.anthropic_api_key,
             model=settings.anthropic_model,
@@ -205,6 +209,8 @@ def build_provider(settings: Any) -> LLMProvider | None:
             timeout=settings.request_timeout_seconds,
         )
     if backend == "deepseek":
+        if not settings.deepseek_api_key:
+            raise SynthesisError("provider is deepseek but no API key is configured")
         return DeepSeekProvider(
             api_key=settings.deepseek_api_key,
             model=settings.deepseek_model,

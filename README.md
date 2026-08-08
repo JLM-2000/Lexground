@@ -71,11 +71,43 @@ what I would work on next, and I can only see it because it is measured.
 | Generation | Anthropic and DeepSeek behind one provider interface |
 | Frontend | Next.js 14 App Router, TypeScript |
 | Infra | Docker Compose, Terraform (ECS Fargate, RDS, ALB, Secrets Manager), GitHub Actions |
-| Quality | 134 tests, ruff, mypy strict, evaluation gate in CI |
+| Quality | 152 tests, ruff, mypy strict, evaluation gate in CI |
 
 One Postgres instance backs both retrieval arms. I did consider a dedicated vector store
 and decided against it: one system to run, backups that cover the index and the metadata
 together, and it is what a customer already has.
+
+---
+
+## How it works
+
+Ingestion runs once. `data/corpus.json` lists the acts, `ingest/fetch.py` pulls the text,
+`ingest/parse.py` splits it into recitals and articles, `ingest/chunk.py` turns each
+numbered paragraph into a chunk carrying its own pin cite, and each chunk is stored twice:
+as a stemmed `tsvector` for keyword search and as a 384-dimension vector for similarity
+search.
+
+Then a question arrives. Say *"How long must records of automated decisions be kept?"*
+
+1. **`retrieval/service.py`** runs two queries against Postgres. The lexical one turns the
+   question into `records | automated | decisions | kept` and ranks by `ts_rank_cd`. The
+   dense one embeds the question and ranks by cosine distance. Each returns 40 candidates.
+2. **`retrieval/fusion.py`** merges the two rankings. A chunk that placed well in both
+   rises to the top. The best 8 become the context.
+3. **`synthesis/prompts.py`** builds the prompt: eight numbered blocks, each headed by its
+   exact pin cite, plus the rules: cite every claim, quote verbatim, refuse if the answer
+   is not in the blocks.
+4. **`synthesis/providers.py`** calls the configured model and gets back JSON with four
+   fields: `answerable`, `answer`, `citations`, `refusal_reason`. With no API key an
+   extractive backend quotes the top chunk instead, so the stack runs with no account.
+5. **`pipeline.py`** stores the whole ranking against the answer, which is what lets the
+   retrieval inspector show, after the fact, whether a bad answer came from retrieval
+   missing the article or synthesis ignoring it.
+
+Evaluation reuses steps 1 to 5 unchanged. `evaluation/harness.py` walks the golden set,
+`score_case()` grades each answer against the provisions it should have rested on, and
+`Thresholds.evaluate()` decides whether the run passes. The API and the harness share one
+`QueryService`, so what CI grades is what production serves.
 
 ---
 
@@ -268,18 +300,21 @@ configured in `data/corpus.json` and runs with `make eval-live`. See
 
 ```
 backend/src/lexground/
-  ingest/       fetch → parse → chunk → embed → index
-  retrieval/    lexical + dense arms, RRF fusion, answerability floors
-  synthesis/    grounded answers, mandatory citations, refusal as a typed outcome
-  evaluation/   metrics, golden set, LLM judge, threshold gate
-  api/          query, trace and corpus endpoints
+  ingest/       fetch.py parse.py chunk.py runner.py
+  retrieval/    embedder.py service.py fusion.py types.py
+  synthesis/    providers.py answerer.py prompts.py schema.py
+  evaluation/   metrics.py harness.py judge.py golden.py
+  api/          routes/query.py routes/corpus.py routes/health.py
+  pipeline.py   the one path a question takes
+  cli.py        init-db, ingest, evaluate
 frontend/       query console, retrieval inspector, evaluation dashboard
 infra/terraform ECS Fargate, RDS Postgres, ALB, Secrets Manager
 data/           corpus manifests, golden sets, gate thresholds
 ```
 
-The API and the eval harness both go through one `QueryService`, so what CI grades is
-what production serves.
+The two files worth reading first are `evaluation/metrics.py`, which is pure functions and
+no I/O, and `evaluation/harness.py`, where `score_case()` is the whole grading rule in
+twenty lines.
 
 ---
 

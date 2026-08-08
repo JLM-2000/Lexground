@@ -12,16 +12,18 @@ from lexground.evaluation.golden import GoldenCase
 from lexground.evaluation.judge import GroundednessJudge
 from lexground.evaluation.metrics import (
     aggregate,
+    citation_keys,
     citation_scores,
-    keys,
     ndcg_at_k,
     normalise,
-    quote_fidelity,
+    quote_is_verbatim,
     recall_at_k,
     reciprocal_rank,
 )
-from lexground.pipeline import QueryService
+from lexground.pipeline import QueryOutcome, QueryService
+from lexground.retrieval.types import RetrievedChunk
 from lexground.synthesis.providers import SynthesisError
+from lexground.synthesis.schema import GroundedAnswer
 
 SCORED_METRICS = (
     "recall_at_5",
@@ -67,6 +69,48 @@ class Thresholds(BaseModel):
         return not failures, failures
 
 
+def score_retrieval(case: GoldenCase, retrieved: list[str]) -> dict[str, float]:
+    found = citation_keys(retrieved)
+    relevant = citation_keys(case.relevant_citations)
+    return {
+        "recall_at_5": recall_at_k(found, relevant, 5),
+        "ndcg_at_10": ndcg_at_k(found, relevant, 10),
+        "mrr": reciprocal_rank(found, relevant),
+    }
+
+
+def score_quote_fidelity(answer: GroundedAnswer, chunks: list[RetrievedChunk]) -> float:
+    """Fraction of claimed quotes that really appear in the chunk they cite."""
+    if not answer.citations:
+        return 0.0
+    source_by_citation = {normalise(chunk.citation): chunk.text for chunk in chunks}
+    verified = sum(
+        quote_is_verbatim(
+            citation.supporting_quote,
+            source_by_citation.get(normalise(citation.citation), ""),
+        )
+        for citation in answer.citations
+    )
+    return verified / len(answer.citations)
+
+
+def score_case(case: GoldenCase, outcome: QueryOutcome) -> dict[str, float]:
+    """Grade one answered question. Pure, so the scoring rules are testable alone."""
+    answer = outcome.answer
+    if not case.answerable:
+        return {"refusal_accuracy": 0.0 if answer.answerable else 1.0}
+
+    claimed = [citation.citation for citation in answer.citations]
+    precision, recall = citation_scores(claimed, case.expected_citations)
+    return {
+        **score_retrieval(case, [chunk.citation for chunk in outcome.retrieval.chunks]),
+        "citation_precision": precision,
+        "citation_recall": recall,
+        "quote_fidelity": score_quote_fidelity(answer, outcome.retrieval.chunks),
+        "refusal_accuracy": 1.0 if answer.answerable else 0.0,
+    }
+
+
 @dataclass(slots=True)
 class EvalReport:
     metrics: dict[str, float]
@@ -80,15 +124,23 @@ class EvalReport:
         lines = [f"Evaluated {self.case_count} cases", ""]
         for name, value in sorted(self.metrics.items()):
             lines.append(f"  {name:<24} {value:>10.4f}")
-        lines.append("")
-        lines.append(f"  {'estimated cost (USD)':<24} {self.total_cost_usd:>10.4f}")
-        lines.append("")
+        lines += ["", f"  {'estimated cost (USD)':<24} {self.total_cost_usd:>10.4f}", ""]
         if self.passed:
             lines.append("GATE PASSED")
         else:
             lines.append("GATE FAILED")
             lines.extend(f"  - {failure}" for failure in self.failures)
         return "\n".join(lines)
+
+
+@dataclass(slots=True)
+class _Results:
+    scored: list[dict[str, float]] = field(default_factory=list)
+    latencies: list[float] = field(default_factory=list)
+    records: list[dict[str, object]] = field(default_factory=list)
+    rows: list[EvalCase] = field(default_factory=list)
+    errors: list[str] = field(default_factory=list)
+    cost_usd: float = 0.0
 
 
 class EvaluationHarness:
@@ -111,120 +163,89 @@ class EvaluationHarness:
         git_sha: str | None = None,
         persist: bool = True,
     ) -> EvalReport:
-        scored: list[dict[str, float]] = []
-        latencies: list[float] = []
-        records: list[dict[str, object]] = []
-        rows: list[EvalCase] = []
-        failures_by_case: list[str] = []
-        total_cost = 0.0
-
+        results = _Results()
         for case in cases:
-            try:
-                outcome = await self._service.ask(
-                    session, case.question, language=case.language, persist=False
-                )
-            except SynthesisError as error:
-                failures_by_case.append(f"{case.id}: {error}")
-                scored.append(dict.fromkeys(SCORED_METRICS, 0.0))
-                records.append({"case_id": case.id, "question": case.question, "error": str(error)})
-                continue
-            latencies.append(float(outcome.latency_ms))
-            total_cost += outcome.cost_usd
+            await self._run_case(session, case, results)
 
-            retrieved = [chunk.citation for chunk in outcome.retrieval.chunks]
-            answer = outcome.answer
-            actual_citations = [citation.citation for citation in answer.citations]
-            scores: dict[str, float] = {}
-            rationale: str | None = None
-
-            if case.answerable:
-                found = keys(retrieved)
-                relevant = keys(case.relevant_citations)
-                scores["recall_at_5"] = recall_at_k(found, relevant, 5)
-                scores["ndcg_at_10"] = ndcg_at_k(found, relevant, 10)
-                scores["mrr"] = reciprocal_rank(found, relevant)
-
-                precision, recall = citation_scores(actual_citations, case.expected_citations)
-                scores["citation_precision"] = precision
-                scores["citation_recall"] = recall
-                scores["quote_fidelity"] = self._quote_fidelity(outcome)
-                scores["refusal_accuracy"] = 0.0 if not answer.answerable else 1.0
-
-                if self._judge is not None and answer.answerable:
-                    verdict = await self._judge.evaluate(
-                        case.question, answer, outcome.retrieval.chunks
-                    )
-                    scores["groundedness"] = 1.0 if verdict.grounded else 0.0
-                    rationale = verdict.rationale
-            else:
-                scores["refusal_accuracy"] = 0.0 if answer.answerable else 1.0
-
-            scored.append(scores)
-            records.append(
-                {
-                    "case_id": case.id,
-                    "question": case.question,
-                    "answerable_expected": case.answerable,
-                    "answerable_actual": answer.answerable,
-                    "retrieved": retrieved,
-                    "expected_citations": case.expected_citations,
-                    "actual_citations": actual_citations,
-                    "scores": scores,
-                    "latency_ms": outcome.latency_ms,
-                }
-            )
-            rows.append(
-                EvalCase(
-                    case_id=case.id,
-                    question=case.question,
-                    language=case.language,
-                    expected_citations={"items": case.expected_citations},
-                    actual_citations={"items": actual_citations},
-                    scores=dict(scores),
-                    answer=answer.answer or None,
-                    judge_rationale=rationale,
-                )
-            )
-
-        metrics = aggregate(scored, latencies)
+        metrics = aggregate(results.scored, results.latencies)
         passed, failures = self._thresholds.evaluate(metrics)
-        failures = failures_by_case + failures
-        passed = passed and not failures_by_case
+        passed = passed and not results.errors
 
         if persist:
-            run = EvalRun(
-                git_sha=git_sha,
-                index_version=index_version,
-                case_count=len(cases),
-                metrics=metrics,
-                passed=passed,
-                cases=rows,
+            session.add(
+                EvalRun(
+                    git_sha=git_sha,
+                    index_version=index_version,
+                    case_count=len(cases),
+                    metrics=metrics,
+                    passed=passed,
+                    cases=results.rows,
+                )
             )
-            session.add(run)
             await session.flush()
 
         return EvalReport(
             metrics=metrics,
             passed=passed,
-            failures=failures,
+            failures=results.errors + failures,
             case_count=len(cases),
-            per_case=records,
-            total_cost_usd=total_cost,
+            per_case=results.records,
+            total_cost_usd=results.cost_usd,
         )
 
-    @staticmethod
-    def _quote_fidelity(outcome: object) -> float:
-        """Fraction of claimed quotes that really appear in the chunk they cite."""
-        answer = outcome.answer  # type: ignore[attr-defined]
-        chunks = outcome.retrieval.chunks  # type: ignore[attr-defined]
-        if not answer.citations:
-            return 0.0
-        by_citation = {normalise(chunk.citation): chunk.text for chunk in chunks}
-        verified = sum(
-            1
-            for citation in answer.citations
-            if quote_fidelity(
-                citation.supporting_quote, by_citation.get(normalise(citation.citation), "")
+    async def _run_case(self, session: AsyncSession, case: GoldenCase, results: _Results) -> None:
+        try:
+            outcome = await self._service.ask(
+                session, case.question, language=case.language, persist=False
+            )
+        except SynthesisError as error:
+            results.errors.append(f"{case.id}: {error}")
+            results.scored.append(dict.fromkeys(SCORED_METRICS, 0.0))
+            results.records.append(
+                {"case_id": case.id, "question": case.question, "error": str(error)}
+            )
+            return
+
+        scores = score_case(case, outcome)
+        rationale = await self._judge_groundedness(case, outcome, scores)
+        claimed = [citation.citation for citation in outcome.answer.citations]
+
+        results.latencies.append(float(outcome.latency_ms))
+        results.cost_usd += outcome.cost_usd
+        results.scored.append(scores)
+        results.records.append(
+            {
+                "case_id": case.id,
+                "question": case.question,
+                "answerable_expected": case.answerable,
+                "answerable_actual": outcome.answer.answerable,
+                "retrieved": [chunk.citation for chunk in outcome.retrieval.chunks],
+                "expected_citations": case.expected_citations,
+                "actual_citations": claimed,
+                "scores": scores,
+                "latency_ms": outcome.latency_ms,
+            }
+        )
+        results.rows.append(
+            EvalCase(
+                case_id=case.id,
+                question=case.question,
+                language=case.language,
+                expected_citations={"items": case.expected_citations},
+                actual_citations={"items": claimed},
+                scores=dict(scores),
+                answer=outcome.answer.answer or None,
+                judge_rationale=rationale,
             )
         )
-        return verified / len(answer.citations)
+
+    async def _judge_groundedness(
+        self, case: GoldenCase, outcome: QueryOutcome, scores: dict[str, float]
+    ) -> str | None:
+        if self._judge is None or not case.answerable or not outcome.answer.answerable:
+            return None
+        verdict = await self._judge.evaluate(
+            case.question, outcome.answer, outcome.retrieval.chunks
+        )
+        scores["groundedness"] = 1.0 if verdict.grounded else 0.0
+        return verdict.rationale

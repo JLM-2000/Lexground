@@ -9,7 +9,7 @@ from lexground.evaluation.metrics import (
     normalise,
     percentile,
     precision_at_k,
-    quote_fidelity,
+    quote_is_verbatim,
     recall_at_k,
     reciprocal_rank,
 )
@@ -101,23 +101,23 @@ class TestCitationScores:
         assert precision == 0.0
 
 
-class TestQuoteFidelity:
+class TestQuoteIsVerbatim:
     SOURCE = "The controller shall notify the supervisory authority within 72 hours."
 
     def test_verbatim_span_passes(self) -> None:
-        assert quote_fidelity("notify the supervisory authority", self.SOURCE)
+        assert quote_is_verbatim("notify the supervisory authority", self.SOURCE)
 
     def test_survives_whitespace_and_case_differences(self) -> None:
-        assert quote_fidelity("NOTIFY   the\nSupervisory Authority", self.SOURCE)
+        assert quote_is_verbatim("NOTIFY   the\nSupervisory Authority", self.SOURCE)
 
     def test_survives_smart_punctuation(self) -> None:
-        assert quote_fidelity("within 72 hours", self.SOURCE.replace("72", "72"))
+        assert quote_is_verbatim("within 72 hours", self.SOURCE.replace("72", "72"))
 
     def test_fabricated_quote_fails(self) -> None:
-        assert not quote_fidelity("notify the data subject within 24 hours", self.SOURCE)
+        assert not quote_is_verbatim("notify the data subject within 24 hours", self.SOURCE)
 
     def test_trivially_short_quote_fails(self) -> None:
-        assert not quote_fidelity("the", self.SOURCE)
+        assert not quote_is_verbatim("the", self.SOURCE)
 
 
 class TestNormalise:

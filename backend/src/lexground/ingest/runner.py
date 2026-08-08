@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -40,11 +40,7 @@ class CorpusManifest(BaseModel):
 class IngestSummary:
     documents: int = 0
     chunks: int = 0
-    skipped: list[str] = None  # type: ignore[assignment]
-
-    def __post_init__(self) -> None:
-        if self.skipped is None:
-            self.skipped = []
+    skipped: list[str] = field(default_factory=list)
 
 
 class Ingestor:

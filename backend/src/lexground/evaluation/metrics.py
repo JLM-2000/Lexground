@@ -29,7 +29,7 @@ def citation_key(citation: str) -> str:
     return normalise(stripped)
 
 
-def keys(citations: Sequence[str]) -> list[str]:
+def citation_keys(citations: Sequence[str]) -> list[str]:
     return [citation_key(citation) for citation in citations]
 
 
@@ -86,13 +86,13 @@ def citation_scores(actual: Sequence[str], expected: Sequence[str]) -> tuple[flo
         return (1.0, 1.0) if not actual else (0.0, 1.0)
     if not actual:
         return 0.0, 0.0
-    actual_set = set(keys(actual))
-    expected_set = set(keys(expected))
+    actual_set = set(citation_keys(actual))
+    expected_set = set(citation_keys(expected))
     overlap = len(actual_set & expected_set)
     return overlap / len(actual_set), overlap / len(expected_set)
 
 
-def quote_fidelity(quote: str, source_text: str) -> bool:
+def quote_is_verbatim(quote: str, source_text: str) -> bool:
     """True when the claimed supporting quote really is a span of the cited chunk."""
     normalised_quote = normalise(quote)
     if len(normalised_quote) < 12:
@@ -113,8 +113,8 @@ def aggregate(per_case: list[dict[str, float]], latencies: list[float]) -> dict[
         values = [case[key] for case in per_case if key in case]
         return round(statistics.fmean(values), 4) if values else 0.0
 
-    keys = {key for case in per_case for key in case}
-    summary = {key: mean_of(key) for key in sorted(keys)}
+    names = {name for case in per_case for name in case}
+    summary = {name: mean_of(name) for name in sorted(names)}
     summary["latency_p50_ms"] = round(percentile(latencies, 0.50), 1)
     summary["latency_p95_ms"] = round(percentile(latencies, 0.95), 1)
     return summary
