@@ -10,9 +10,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libxml2 libxslt1.1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml README.md ./
+COPY pyproject.toml ./
 COPY src ./src
-RUN pip install --no-cache-dir .
+RUN pip install --no-cache-dir ".[embeddings]"
 
 RUN useradd --create-home --uid 10001 lexground
 USER lexground
