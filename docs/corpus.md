@@ -62,7 +62,7 @@ Being written rather than found, they are drafted to exercise what is easy to ge
   Spanish question has to resolve to the Spanish chunk of the same provision — and the gaps
   test what happens when a provision exists in one language only.
 
-Graded by `data/fixtures/golden.jsonl` (37 cases) against `data/thresholds.offline.json`.
+Graded by `data/fixtures/golden.jsonl` (40 cases) against `data/thresholds.offline.json`.
 
 ```bash
 make seed && make eval
@@ -84,7 +84,7 @@ EUR-Lex fronts its HTML views with a JavaScript bot challenge. Every non-browser
 gets **HTTP 202 with a ~2 KB stub body**. The CELLAR content-negotiation endpoint
 (`publications.europa.eu/resource/celex/...`) returns 400 for the same requests.
 
-This is not a bug in the fetcher and it is not worked around in code. `EurLexClient`
+This is not a bug in the fetcher and it is not worked around in code. `EurLexSource`
 detects the stub, retries, and then fails with an actionable message:
 
 ```
@@ -98,7 +98,7 @@ the delivery mechanism, not the licence.
 
 ### Seeding the cache
 
-The ingest pipeline reads `data/corpus/{CELEX}.{lang}.txt` before it reaches for the
+The ingest pipeline reads `data/corpus/{source_id}.{lang}.txt` before it reaches for the
 network, so any route that gets you the text works:
 
 1. Open `https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32016R0679` in a
@@ -116,7 +116,8 @@ terms. The committed fixture corpus is what makes the repository runnable withou
 
    ```json
    {
-     "celex_id": "32022L2555",
+     "source": "eurlex",
+     "source_id": "32022L2555",
      "short_title": "NIS2",
      "title": "Directive (EU) 2022/2555 on measures for a high common level of cybersecurity",
      "languages": ["en", "es"],
@@ -126,7 +127,7 @@ terms. The committed fixture corpus is what makes the repository runnable withou
    ```
 
 2. Seed its cache entry, then re-run ingestion. Existing chunks for that
-   `(celex_id, language, version)` are replaced, not duplicated.
+   `(source, source_id, language, version)` are replaced, not duplicated.
 
 3. **Add golden cases before trusting it.** An act in the index with no cases behind it is
    an act the gate cannot see. Include at least one question whose answer sits in a
