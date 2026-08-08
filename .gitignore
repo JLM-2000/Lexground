@@ -29,3 +29,6 @@ reports/
 Thumbs.db
 .idea/
 .vscode/
+
+# Personal/unpublished source documents. Never committed.
+data/uploads/
