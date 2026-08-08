@@ -78,7 +78,7 @@ eval: ## Score the fixture golden set and apply the offline gate
 	  --report reports/eval.json
 
 .PHONY: eval-judge
-eval-judge: ## Score the fixture set with synthesis and the groundedness judge (needs ANTHROPIC_API_KEY)
+eval-judge: ## Score with live synthesis and the groundedness judge (needs a provider key)
 	$(PY)/lexground evaluate \
 	  --golden $(FIXTURE_GOLDEN) \
 	  --manifest $(FIXTURE_MANIFEST) \

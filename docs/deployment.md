@@ -102,7 +102,8 @@ Everything is `LEXGROUND_`-prefixed and read by pydantic-settings.
 | Variable | Purpose |
 |---|---|
 | `LEXGROUND_DATABASE_URL` | Async DSN. From Secrets Manager in ECS. |
-| `LEXGROUND_ANTHROPIC_API_KEY` | Absent → extractive backend. Present → Claude synthesis. |
+| `LEXGROUND_ANTHROPIC_API_KEY` / `LEXGROUND_DEEPSEEK_API_KEY` | Neither set → extractive backend. Either set → that provider. Anthropic wins if both. |
+| `LEXGROUND_LLM_PROVIDER` | Overrides the detection above. |
 | `LEXGROUND_EMBEDDING_BACKEND` | `fastembed` in deployment, `hash` for tests. |
 | `LEXGROUND_SYNTHESIS_EFFORT` | Effort level for synthesis. |
 | `LEXGROUND_MIN_LEXICAL_SCORE` / `_MIN_DENSE_SIMILARITY` | Answerability backstops. See [evaluation.md](evaluation.md#abstention) before changing either. |
