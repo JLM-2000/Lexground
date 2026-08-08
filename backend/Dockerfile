@@ -1,8 +1,9 @@
-FROM python:3.12-slim AS base
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    FASTEMBED_CACHE_PATH=/opt/models
 
 WORKDIR /app
 
@@ -13,6 +14,11 @@ RUN apt-get update \
 COPY pyproject.toml ./
 COPY src ./src
 RUN pip install --no-cache-dir ".[embeddings]"
+
+ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+RUN mkdir -p "$FASTEMBED_CACHE_PATH" \
+    && python -c "from fastembed import TextEmbedding; TextEmbedding(model_name='${EMBEDDING_MODEL}')" \
+    && chmod -R a+rX "$FASTEMBED_CACHE_PATH"
 
 RUN useradd --create-home --uid 10001 lexground
 USER lexground

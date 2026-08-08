@@ -14,7 +14,8 @@ FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
-    PORT=3000
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
 
 RUN addgroup -g 10001 -S nodejs && adduser -S -u 10001 -G nodejs nextjs
 

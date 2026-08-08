@@ -1,5 +1,11 @@
 name: lexground
 
+x-backend-env: &backend-env
+  LEXGROUND_DATABASE_URL: postgresql+asyncpg://lexground:lexground@db:5432/lexground
+  LEXGROUND_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  LEXGROUND_EMBEDDING_BACKEND: ${LEXGROUND_EMBEDDING_BACKEND:-fastembed}
+  LEXGROUND_CORS_ORIGINS: '["http://localhost:3000"]'
+
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -17,32 +23,50 @@ services:
       timeout: 3s
       retries: 20
 
-  backend:
+  seed:
     build:
       context: ./backend
-    environment:
-      LEXGROUND_DATABASE_URL: postgresql+asyncpg://lexground:lexground@db:5432/lexground
-      LEXGROUND_ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      LEXGROUND_EMBEDDING_BACKEND: ${LEXGROUND_EMBEDDING_BACKEND:-hash}
-      LEXGROUND_CORS_ORIGINS: '["http://localhost:3000"]'
-    ports:
-      - "8000:8000"
+    environment: *backend-env
     volumes:
       - ./data:/app/data
     depends_on:
       db:
         condition: service_healthy
+    restart: "no"
+    command:
+      - sh
+      - -c
+      - lexground init-db && lexground ingest --manifest data/fixtures/corpus.json --cache-dir data/fixtures/corpus --offline
+
+  backend:
+    build:
+      context: ./backend
+    environment: *backend-env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      seed:
+        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
-      interval: 5s
+      test:
+        - CMD-SHELL
+        - >-
+          python -c "import urllib.request,sys,json;
+          r=json.load(urllib.request.urlopen('http://localhost:8000/health/ready'));
+          sys.exit(0 if r['status']=='ok' else 1)"
+      interval: 10s
       timeout: 5s
       retries: 12
+      start_period: 30s
 
   frontend:
     build:
       context: ./frontend
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:8000
+      API_URL_INTERNAL: http://backend:8000
     ports:
       - "3000:3000"
     depends_on:
