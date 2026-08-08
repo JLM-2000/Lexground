@@ -3,9 +3,11 @@
 Grounded retrieval over EU regulatory law, with the evaluation harness wired into CI as a
 build gate.
 
-Not a RAG demo. The interesting part is the part that decides whether a change made the
-system worse: a golden set, six metrics, versioned thresholds, and a pipeline that goes
-red when retrieval quality drops or a fabricated quote gets through.
+Retrieval over a corpus is the easy half. The half I cared about is knowing whether a
+change made the answers worse, because a worse RAG system does not throw an exception, it
+returns a confident wrong answer. So there is a golden set, seven metrics, thresholds in
+version control, and a build that goes red when retrieval quality drops or a quote turns
+out not to be in the article it cites.
 
 ```
 make install && make seed && make eval
@@ -15,14 +17,14 @@ make install && make seed && make eval
 
 ## What the gate measures
 
-Latest run against the committed fixture corpus — 37 graded questions, 111 indexed
+Latest run against the committed fixture corpus. 37 graded questions, 111 indexed
 provisions, English and Spanish. Reproduce with `make eval`.
 
 | Metric | Value | Floor | What a regression here means |
 |---|---:|---:|---|
 | `recall_at_5` | 0.906 | 0.85 | The governing provision stopped reaching the context window |
 | `ndcg_at_10` | 0.806 | 0.75 | It still surfaces, but buried under distractors |
-| `mrr` | 0.741 | 0.70 | It surfaces late — the first hit is usually wrong |
+| `mrr` | 0.741 | 0.70 | It surfaces late; the first hit is usually wrong |
 | `citation_recall` | 0.625 | 0.60 | The answer failed to cite the provision it should rest on |
 | `citation_precision` | 0.625 | 0.60 | The answer cites an article it did not rest on |
 | `quote_fidelity` | 1.000 | 0.95 | A supporting quote is not verbatim in the chunk it cites |
@@ -31,7 +33,7 @@ provisions, English and Spanish. Reproduce with `make eval`.
 
 These are the **offline profile**: deterministic extractive synthesis, no provider API
 key, which is what CI runs so the pipeline is hermetic and free. `citation_precision` is
-capped at ~0.63 by that backend — it can only ever cite the top-ranked chunk.
+capped at ~0.63 by that backend, which can only ever cite the top-ranked chunk.
 
 ### With a real model generating the answers
 
@@ -47,78 +49,136 @@ Measured over **five runs** on DeepSeek (`deepseek-chat`, which the API served a
 | `citation_precision` | 0.623 | **0.688** | 0.747 | 0.124 |
 | `groundedness` | 0.483 | **0.610** | 0.710 | 0.227 |
 
-Two things to read off this.
+Five runs because one was not enough to trust. The retrieval metrics do not appear in that
+table because they did not move at all: same index, same embedder, nothing sampling. Every
+generation metric did move, groundedness by 0.23 between two runs of identical code. The
+judged floors sit below the observed minimum for that reason.
 
-**Generation metrics are not stable enough to gate tightly, and retrieval metrics are.**
-The three retrieval numbers were byte-identical across all five runs — same index, same
-embedder, no sampling. Every generation metric moved, and groundedness moved by 0.23
-between two runs of unchanged code. A gate set just under a single observed run would go
-red on noise. The judged floors therefore sit below the observed minimum, and 37 cases is
-too small a golden set to do better; more cases or repeated sampling per case is the fix,
-not a tighter threshold.
-
-**Abstention belongs in the model, and the numbers say so.** `refusal_accuracy` is 0.93
-generating versus 0.86 extractive — the model reads the context and decides it cannot
-answer, which no retrieval score threshold managed (see below). `groundedness` at 0.61 is
-the honest weak spot: roughly a third of answers assert something the cited provision does
-not quite say. That is the number I would work on next, and it is visible precisely
-because it is measured.
+`refusal_accuracy` at 0.93 against 0.86 for the extractive baseline is the number that
+justifies letting the model decide when to refuse. `groundedness` at 0.61 is the weak spot:
+roughly a third of answers assert something the cited provision does not quite say. That is
+what I would work on next, and I can only see it because it is measured.
 
 ---
 
-## Three things I would want to be asked about
+## Stack
 
-**Retrieval score is not an abstention signal.** The first design gated answerability on
-the fused retrieval score. Measuring it killed the idea: across the golden set the top
-score for answerable and unanswerable questions overlaps almost completely — medians 0.70
-vs 0.50 lexical, 0.42 vs 0.35 dense — because out-of-scope questions reuse in-domain
-vocabulary. Worse, reciprocal rank fusion scores depend only on rank *position*, so the
-top result scores `1/(k+1)` whether it is the governing article or the closest thing in an
-unrelated act. The floors are now a backstop for an index that returned nothing, and
-abstention is the synthesiser's decision, made with the context in front of it.
-[docs/evaluation.md](docs/evaluation.md#abstention)
+| | |
+|---|---|
+| API | Python 3.12, FastAPI, SQLAlchemy 2 async, asyncpg, Pydantic 2 |
+| Storage | PostgreSQL 16, pgvector with an HNSW index, Postgres full-text search |
+| Retrieval | fastembed (`paraphrase-multilingual-MiniLM-L12-v2`, 384d), reciprocal rank fusion |
+| Generation | Anthropic and DeepSeek behind one provider interface |
+| Frontend | Next.js 14 App Router, TypeScript |
+| Infra | Docker Compose, Terraform (ECS Fargate, RDS, ALB, Secrets Manager), GitHub Actions |
+| Quality | 134 tests, ruff, mypy strict, evaluation gate in CI |
 
-**Chunking at the level people cite.** Fixed-window chunking cuts across article
-boundaries, and once a span straddles two provisions you cannot say which one a claim
-rests on — which makes citation accuracy unmeasurable. Lexground splits on the legal
-structure instead: recitals whole, articles broken at their numbered paragraphs, one pin
-cite per chunk (`ADSR Art. 4(2)`). Golden-set relevance is keyed on the provision rather
-than the chunk id, so the labels survive re-chunking.
+One Postgres instance backs both retrieval arms. I did consider a dedicated vector store
+and decided against it: one system to run, backups that cover the index and the metadata
+together, and it is what a customer already has.
+
+---
+
+## What I got wrong
+
+Most of these shipped into a green test suite. Measurement found them, review did not.
+
+**I tried to decide "should I refuse?" from the retrieval score.** Seemed obvious. Low
+score means nothing relevant, so refuse. I measured it before trusting it and the top
+scores for answerable and unanswerable questions turned out to overlap almost completely:
+medians 0.70 against 0.50 lexical, 0.42 against 0.35 dense. Out-of-scope questions reuse
+the same vocabulary as real ones ("supervisory authority", "deployer"), so they retrieve
+strongly against an index that cannot answer them.
+
+There was a second problem underneath that one. Reciprocal rank fusion scores depend only
+on rank *position*, so the top hit always scores `1/(k+1)` whether it is the governing
+article or noise from an unrelated act. I had been about to gate on a constant. There is
+now a test, `test_score_depends_only_on_rank_position`, pinning that property so I do not
+make the mistake twice.
+
+Abstention moved into the model, which reads the context and decides. Refusal accuracy went
+from 0.86 to 0.93. The score floors survive only as a backstop for an index that returned
+nothing at all.
+
+**My nDCG came back as 1.138.** It is capped at 1.0 by definition, so the metric was
+simply wrong. Article 4 is stored as chunks 4(1), 4(2), 4(3), and all three counted as
+separate hits against an ideal ranking that contains Article 4 once. Rankings are collapsed
+to distinct provisions before scoring now. A metric that can exceed its own maximum is one
+nobody is reading.
+
+**The lexical arm was returning nothing at all.** Every result on the page was coming from
+the vector side and I had not noticed, because the answers still looked fine.
+`websearch_to_tsquery` ANDs every term, and no single article contains every word of a
+natural-language question. Terms are ORed now so `ts_rank_cd` ranks on coverage.
+
+**No stemming, so "records" never matched "record".** The stored `tsvector` used the
+`simple` config. Fixing it moved recall@5 from 0.72 to 0.78 with the embedding backend held
+constant. It is a generated column that picks its stemmer from the row's language:
+`to_tsvector(regconfig, text)` is immutable and so is a `CASE` over a stored column, which
+is what keeps it declarative rather than a trigger.
+
+**It looked like the model was fabricating quotes.** Quote fidelity sat at 0.81, meaning
+almost a fifth of supporting quotes did not appear in the article they cited. I read the
+failing cases instead of tuning the prompt. My own context blocks were labelled
+`[1] ADSR Art. 4(2) — SYNTHETIC FIXTURE — Regulation (EU) 2024/9001...` and the model was
+copying the entire header line as the citation. Dropping the title took quote fidelity to
+0.97 and citation precision from 0.61 to 0.75. The prompt was ambiguous, not the model.
+
+**One evaluation run is not a measurement.** After that fix I got groundedness 0.71 and
+nearly wrote it down as the number. Running the same code five times gave 0.71, 0.48, 0.67,
+0.57, 0.62. Meanwhile all three retrieval metrics were identical every run, because the
+index is deterministic and nothing there samples. A floor set just under one lucky run goes
+red on noise and teaches everyone to ignore CI. Judged floors sit below the observed
+minimum, the README publishes min/mean/max, and the real fix is more cases rather than a
+tighter threshold.
+
+**A four-character string in a `varchar(2)` column.** Query traces wrote `"auto"` into the
+language column when no filter was set. Only the integration tests caught it, because it
+needs a real Postgres to fail.
+
+**A response schema the API would have rejected.** Pydantic leaves fields that have
+defaults out of `required`, and structured outputs reject a partial `required` list, so
+`refusal_reason` was being dropped.
+
+**Five things broke the first time I ran it from a clean clone**, none of which appeared
+while developing against a local venv. The CLI resolved its data paths from the installed
+package location, which is `site-packages` in a container. A folded YAML block split the
+seed command's arguments into separate shell commands. The embedding model downloaded at
+runtime into a root-owned volume while the container ran as uid 10001. Next.js standalone
+binds to the container hostname unless `HOSTNAME` is set. And server-rendered pages fetched
+the API at `localhost`, which inside the frontend container is the frontend.
+
+---
+
+## Design decisions I would defend
+
+**Chunk at the level people cite.** Fixed-window chunking cuts across article boundaries,
+and once a span straddles two provisions there is no honest answer to "which article does
+this claim rest on". That makes citation accuracy unmeasurable, which defeats the point of
+the project. So recitals stay whole and articles split at their numbered paragraphs, one
+pin cite per chunk. Golden-set relevance is keyed on the provision rather than the chunk
+id, so the labels survive a change to the chunker.
 [docs/architecture.md](docs/architecture.md#chunking)
 
-**Two arms because they fail differently.** Postgres full-text search with per-language
-stemming handles exact statutory terms and article numbers; pgvector cosine handles
-paraphrase and cross-lingual matching. Fused with reciprocal rank rather than a weighted
-blend, because `ts_rank_cd` and cosine similarity are not on a comparable scale and any
-fixed weight needs retuning whenever either side changes.
+**Two retrieval arms because they fail differently.** Postgres full-text search with
+per-language stemming handles exact statutory terms and article numbers. pgvector cosine
+handles paraphrase and the cross-lingual case. Fused by reciprocal rank rather than a
+weighted blend, because `ts_rank_cd` and cosine similarity are not on a comparable scale
+and any fixed weight needs retuning whenever either side changes.
 [docs/architecture.md](docs/architecture.md#retrieval)
 
----
+**The provider interface is not a base-URL swap.** Anthropic enforces the answer schema
+server-side, so the response is valid by construction. DeepSeek has a JSON mode that
+guarantees syntax and nothing about shape, so that provider puts the schema in the prompt
+and validates with a bounded retry that feeds the error back. Costs price on the served
+model and fall back to the requested one, since asking for `deepseek-chat` is served as
+`deepseek-v4-flash`, and an unknown model reports zero rather than a plausible wrong number.
 
-## What the eval caught that review did not
-
-Every one of these shipped into a passing test suite and was found by measurement:
-
-- **nDCG above 1.0.** Three paragraph chunks of one article each counted as a hit against
-  an ideal ranking containing that article once. Rankings are now deduplicated to
-  provisions before scoring.
-- **The lexical arm returned nothing at all.** Every result was coming from the dense
-  side. `websearch_to_tsquery` ANDs every term, and no single provision contains every word
-  of a natural-language question. Terms are ORed now, so `ts_rank_cd` ranks on term
-  coverage instead.
-- **No stemming.** The stored `tsvector` used the `simple` config, so "records" never
-  matched "record"; fixing it moved recall@5 from 0.72 to 0.78 on a fixed embedding
-  backend. It is now a generated column that picks its stemmer from the row's language —
-  `to_tsvector(regconfig, text)` is immutable, and so is a `CASE` over a stored column,
-  which is what keeps it declarative instead of a trigger.
-- **A 4-character sentinel in a `varchar(2)` column.** Query traces wrote `"auto"` into the
-  language column when no filter was given. Found by an integration test, not a unit test.
-- **A structured-output schema the API would have rejected.** Pydantic omits defaulted
-  fields from `required`, and structured outputs reject a partial one.
-- **The prompt's own context header was corrupting citations.** Blocks were labelled
-  `[1] {pin cite} — {act title}`, and the model copied the whole line as the citation.
-  Fixing the header moved quote fidelity 0.81 → 0.97 and citation precision 0.61 → 0.75.
-  It read as the model fabricating quotes; it was the prompt being ambiguous.
+**Readiness is index-aware.** `/health` is liveness. `/health/ready` reports `degraded`
+when the index is empty, because a service that is up with nothing indexed is up and
+useless. The ALB checks the first so a bad task stays visible and alarms; the ECS container
+check uses the second, so a broken ingest cannot replace a working deployment and the
+circuit breaker rolls it back.
 
 ---
 
@@ -155,12 +215,12 @@ make check      # everything CI runs: lint, types, tests, gate
 `make help` lists the rest.
 
 Export `LEXGROUND_ANTHROPIC_API_KEY` or `LEXGROUND_DEEPSEEK_API_KEY` and synthesis
-switches from the extractive baseline to that provider automatically — no config change.
+switches from the extractive baseline to that provider automatically, with no config change.
 `make eval-judge` then adds the groundedness judge.
 
 The two providers are not interchangeable under the hood. Anthropic enforces the answer
 schema server-side, so a response is valid by construction. DeepSeek offers a JSON *mode*
-— syntactically valid, shape unguaranteed — so its provider puts the schema in the prompt
+(syntactically valid, shape unguaranteed), so its provider puts the schema in the prompt
 and validates with a bounded retry. That difference is the reason the provider interface
 exists rather than a base-URL swap.
 
@@ -198,7 +258,7 @@ They are drafted to exercise what is easy to get wrong: paragraph-level citation
 near-identical record-keeping and penalty articles across two acts as distractors, a
 cross-reference that has to be followed, and a partial Spanish translation.
 
-The real corpus — GDPR, the AI Act and the DSA, graded by `data/golden/cases.jsonl` — is
+The real corpus (GDPR, the AI Act and the DSA, graded by `data/golden/cases.jsonl`) is
 configured in `data/corpus.json` and runs with `make eval-live`. See
 [docs/corpus.md](docs/corpus.md) for seeding it past the challenge.
 
@@ -233,7 +293,7 @@ index-aware, so a bad ingest cannot replace a working deployment and the circuit
 rolls it back.
 
 Validated with `tofu validate` against the AWS provider schema. Not applied against a live
-account — there is no running deployment behind this repository.
+account. There is no running deployment behind this repository.
 
 [docs/deployment.md](docs/deployment.md)
 
@@ -241,10 +301,10 @@ account — there is no running deployment behind this repository.
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md) — pipeline, chunking, retrieval, schema
-- [docs/evaluation.md](docs/evaluation.md) — what each metric means, how thresholds were set
-- [docs/corpus.md](docs/corpus.md) — corpora, the EUR-Lex challenge, adding an act
-- [docs/deployment.md](docs/deployment.md) — infrastructure and rollout
+- [docs/architecture.md](docs/architecture.md): pipeline, chunking, retrieval, schema
+- [docs/evaluation.md](docs/evaluation.md): what each metric means, how thresholds were set
+- [docs/corpus.md](docs/corpus.md): corpora, the EUR-Lex challenge, adding an act
+- [docs/deployment.md](docs/deployment.md): infrastructure and rollout
 
 ---
 
