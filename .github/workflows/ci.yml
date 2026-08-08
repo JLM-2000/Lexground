@@ -55,14 +55,11 @@ jobs:
       - name: Types
         working-directory: backend
         run: .venv/bin/mypy src
-        continue-on-error: true
 
       - name: Test
         working-directory: backend
         run: .venv/bin/pytest -q --cov=lexground --cov-report=term-missing
 
-      # The embedding model is a fixed dependency of the index, so the gate's
-      # numbers are only comparable when it is pinned and cached.
       - name: Cache embedding model
         uses: actions/cache@v4
         with:
@@ -80,8 +77,6 @@ jobs:
             --cache-dir ../data/fixtures/corpus \
             --offline
 
-      # The gate. A change that drops retrieval quality or lets a fabricated
-      # quote through fails the build the same way a broken test would.
       - name: Evaluation gate
         working-directory: backend
         env:

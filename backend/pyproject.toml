@@ -65,5 +65,11 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["fastembed.*", "pgvector.*"]
+module = ["fastembed.*", "pgvector.*", "lxml.*"]
 ignore_missing_imports = true
+
+# Tests exercise runtime behaviour and lean on untyped pytest fixtures; strict mode
+# there produces noise without catching anything the suite would not.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
