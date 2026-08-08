@@ -67,6 +67,10 @@ the whole corpus.
 `.github/workflows/deploy.yml` runs on a successful CI run on `main`. It will not run at
 all if CI failed, so **a commit whose evaluation gate is red cannot reach production**.
 
+It is gated behind the repository variable `DEPLOY_ENABLED`, which is unset here because
+there is no AWS account behind this repository. Set it to `true`, along with the
+`AWS_DEPLOY_ROLE_ARN` secret and the `AWS_REGION` / `API_URL` variables, to arm it.
+
 1. OIDC into the deployment role — no long-lived AWS keys in GitHub.
 2. Build and push `…:$GITHUB_SHA` to ECR.
 3. Register a new task definition revision with that image and update the service.

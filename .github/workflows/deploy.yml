@@ -20,8 +20,9 @@ jobs:
     name: Deploy to ECS
     runs-on: ubuntu-latest
     if: >-
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      vars.DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       github.event.workflow_run.conclusion == 'success')
     environment: production
 
     steps:
