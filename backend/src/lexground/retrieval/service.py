@@ -16,7 +16,7 @@ from lexground.retrieval.types import RetrievalResult, RetrievedChunk
 _LEXICAL_SQL = text(
     """
     SELECT c.id, c.citation, c.text, c.language, c.unit_type,
-           d.title, d.celex_id, d.source_url,
+           d.title, d.source_id, d.source_url,
            ts_rank_cd(c.search_vector, query) AS score
     FROM chunks c
     JOIN documents d ON d.id = c.document_id
@@ -31,7 +31,7 @@ _LEXICAL_SQL = text(
 _DENSE_SQL = text(
     """
     SELECT c.id, c.citation, c.text, c.language, c.unit_type,
-           d.title, d.celex_id, d.source_url,
+           d.title, d.source_id, d.source_url,
            1 - (c.embedding <=> CAST(:embedding AS vector)) AS score
     FROM chunks c
     JOIN documents d ON d.id = c.document_id
@@ -65,7 +65,7 @@ def _to_chunk(row: object, *, lexical: bool) -> RetrievedChunk:
         citation=mapping["citation"],
         text=mapping["text"],
         document_title=mapping["title"],
-        celex_id=mapping["celex_id"],
+        source_id=mapping["source_id"],
         language=mapping["language"],
         source_url=mapping["source_url"],
         unit_type=mapping["unit_type"],

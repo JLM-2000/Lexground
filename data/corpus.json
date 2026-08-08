@@ -1,31 +1,42 @@
 {
   "documents": [
     {
-      "celex_id": "32016R0679",
       "short_title": "GDPR",
       "title": "Regulation (EU) 2016/679 on the protection of natural persons with regard to the processing of personal data and on the free movement of such data (General Data Protection Regulation)",
-      "languages": ["en", "es"],
+      "languages": [
+        "en",
+        "es"
+      ],
       "version": "original",
       "jurisdiction": "EU",
-      "adopted_on": "2016-04-27"
+      "adopted_on": "2016-04-27",
+      "source": "eurlex",
+      "source_id": "32016R0679"
     },
     {
-      "celex_id": "32024R1689",
       "short_title": "AI Act",
       "title": "Regulation (EU) 2024/1689 laying down harmonised rules on artificial intelligence (Artificial Intelligence Act)",
-      "languages": ["en", "es"],
+      "languages": [
+        "en",
+        "es"
+      ],
       "version": "original",
       "jurisdiction": "EU",
-      "adopted_on": "2024-06-13"
+      "adopted_on": "2024-06-13",
+      "source": "eurlex",
+      "source_id": "32024R1689"
     },
     {
-      "celex_id": "32022R2065",
       "short_title": "DSA",
       "title": "Regulation (EU) 2022/2065 on a Single Market For Digital Services (Digital Services Act)",
-      "languages": ["en"],
+      "languages": [
+        "en"
+      ],
       "version": "original",
       "jurisdiction": "EU",
-      "adopted_on": "2022-10-19"
+      "adopted_on": "2022-10-19",
+      "source": "eurlex",
+      "source_id": "32022R2065"
     }
   ]
 }

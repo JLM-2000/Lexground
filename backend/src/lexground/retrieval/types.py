@@ -10,7 +10,7 @@ class RetrievedChunk:
     citation: str
     text: str
     document_title: str
-    celex_id: str
+    source_id: str
     language: str
     source_url: str
     unit_type: str
@@ -26,7 +26,7 @@ class RetrievedChunk:
         return {
             "chunk_id": str(self.chunk_id),
             "citation": self.citation,
-            "celex_id": self.celex_id,
+            "source_id": self.source_id,
             "document_title": self.document_title,
             "source_url": self.source_url,
             "language": self.language,

@@ -13,7 +13,8 @@ router = APIRouter(prefix="/api", tags=["corpus"])
 async def list_documents(session: SessionDep) -> list[dict[str, object]]:
     rows = await session.execute(
         select(
-            Document.celex_id,
+            Document.source,
+            Document.source_id,
             Document.short_title,
             Document.title,
             Document.language,

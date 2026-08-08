@@ -14,7 +14,7 @@ def chunk(citation: str, *, lexical: float = 0.0, dense: float = 0.0) -> Retriev
         citation=citation,
         text=f"body of {citation}",
         document_title="Act",
-        celex_id="X",
+        source_id="X",
         language="en",
         source_url="http://example.invalid",
         unit_type="article",

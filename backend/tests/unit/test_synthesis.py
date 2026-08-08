@@ -25,7 +25,7 @@ def chunk(citation: str, text: str) -> RetrievedChunk:
         citation=citation,
         text=text,
         document_title="Act",
-        celex_id="X",
+        source_id="X",
         language="en",
         source_url="http://example.invalid",
         unit_type="article",

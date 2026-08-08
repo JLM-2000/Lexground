@@ -29,6 +29,7 @@ export default async function CorpusPage() {
         <table>
           <thead>
             <tr>
+              <th>Source</th>
               <th>Short title</th>
               <th>Title</th>
               <th>Lang</th>
@@ -38,7 +39,8 @@ export default async function CorpusPage() {
           </thead>
           <tbody>
             {documents.map((document) => (
-              <tr key={`${document.celex_id}-${document.language}`}>
+              <tr key={`${document.source}-${document.source_id}-${document.language}`}>
+                <td className="tag">{document.source}</td>
                 <td className="pin">{document.short_title}</td>
                 <td>
                   <a href={document.source_url} target="_blank" rel="noreferrer">

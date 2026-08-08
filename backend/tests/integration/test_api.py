@@ -140,7 +140,7 @@ class TestTraces:
 class TestCorpusEndpoints:
     async def test_lists_indexed_documents_with_chunk_counts(self, client: AsyncClient) -> None:
         documents = (await client.get("/api/documents")).json()
-        assert documents[0]["celex_id"] == "TEST0001"
+        assert documents[0]["source_id"] == "TEST0001"
         assert documents[0]["chunk_count"] > 0
 
     async def test_eval_runs_endpoint_is_empty_before_any_run(self, client: AsyncClient) -> None:

@@ -78,7 +78,7 @@ async def seeded(engine) -> AsyncIterator[None]:
     maker = async_sessionmaker(engine, expire_on_commit=False)
     async with maker() as session:
         document = Document(
-            celex_id="TEST0001",
+            source_id="TEST0001",
             title="Test Act",
             short_title="TEST",
             language="en",

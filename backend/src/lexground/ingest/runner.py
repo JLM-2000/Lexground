@@ -12,17 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from lexground.db.models import Chunk as ChunkRow
 from lexground.db.models import Document
-from lexground.ingest.chunk import chunk_units
-from lexground.ingest.fetch import EurLexClient
+from lexground.ingest.chunk import Chunk, chunk_prose, chunk_units
 from lexground.ingest.parse import parse_document
+from lexground.ingest.sources import DocumentSource, SourceName
 from lexground.retrieval.embedder import Embedder
 
 
 class CorpusEntry(BaseModel):
-    celex_id: str
+    source: SourceName = "eurlex"
+    source_id: str
     short_title: str
     title: str
-    languages: list[str]
+    languages: list[str] = ["en"]
     version: str = "original"
     jurisdiction: str = "EU"
     adopted_on: str | None = None
@@ -43,10 +44,22 @@ class IngestSummary:
     skipped: list[str] = field(default_factory=list)
 
 
+def chunk_document(text: str, *, short_title: str, language: str) -> list[Chunk]:
+    """Use the legal chunker when the document has provisions, prose chunking otherwise.
+
+    Detection is the parser itself: if it finds no articles or recitals there is nothing
+    to cite by provision, so the locator falls back to headings and pages.
+    """
+    units = parse_document(text, language=language)
+    if units:
+        return chunk_units(units, short_title=short_title, language=language)
+    return chunk_prose(text, short_title=short_title)
+
+
 class Ingestor:
-    def __init__(self, embedder: Embedder, client: EurLexClient) -> None:
+    def __init__(self, embedder: Embedder, sources: dict[SourceName, DocumentSource]) -> None:
         self._embedder = embedder
-        self._client = client
+        self._sources = sources
 
     async def ingest_manifest(
         self, session: AsyncSession, manifest: CorpusManifest
@@ -57,50 +70,23 @@ class Ingestor:
                 try:
                     chunk_count = await self.ingest_one(session, entry, language)
                 except Exception as error:
-                    summary.skipped.append(f"{entry.celex_id}/{language}: {error}")
+                    summary.skipped.append(f"{entry.source_id}/{language}: {error}")
                     continue
                 summary.documents += 1
                 summary.chunks += chunk_count
         return summary
 
     async def ingest_one(self, session: AsyncSession, entry: CorpusEntry, language: str) -> int:
-        fetched = await self._client.fetch(entry.celex_id, language)
-        units = parse_document(fetched.text, language=language)
-        if not units:
-            raise ValueError("parser produced no citable units")
+        source = self._sources.get(entry.source)
+        if source is None:
+            raise ValueError(f"no connector configured for source {entry.source!r}")
 
-        chunks = chunk_units(units, short_title=entry.short_title, language=language)
+        fetched = await source.fetch(entry.source_id, language)
+        chunks = chunk_document(fetched.text, short_title=entry.short_title, language=language)
+        if not chunks:
+            raise ValueError("document produced no chunks")
 
-        existing = await session.scalar(
-            select(Document).where(
-                Document.celex_id == entry.celex_id,
-                Document.language == language,
-                Document.version == entry.version,
-            )
-        )
-        if existing is not None:
-            await session.execute(delete(ChunkRow).where(ChunkRow.document_id == existing.id))
-            document = existing
-            document.title = entry.title
-            document.source_url = fetched.source_url
-        else:
-            document = Document(
-                celex_id=entry.celex_id,
-                title=entry.title,
-                short_title=entry.short_title,
-                language=language,
-                version=entry.version,
-                jurisdiction=entry.jurisdiction,
-                source_url=fetched.source_url,
-                adopted_on=(
-                    datetime.fromisoformat(entry.adopted_on).replace(tzinfo=UTC)
-                    if entry.adopted_on
-                    else None
-                ),
-            )
-            session.add(document)
-            await session.flush()
-
+        document = await self._upsert_document(session, entry, language, fetched.source_url)
         vectors = self._embedder.embed_documents([chunk.text for chunk in chunks])
         session.add_all(
             ChunkRow(
@@ -120,6 +106,43 @@ class Ingestor:
         )
         await session.flush()
         return len(chunks)
+
+    async def _upsert_document(
+        self, session: AsyncSession, entry: CorpusEntry, language: str, source_url: str
+    ) -> Document:
+        existing = await session.scalar(
+            select(Document).where(
+                Document.source == entry.source,
+                Document.source_id == entry.source_id,
+                Document.language == language,
+                Document.version == entry.version,
+            )
+        )
+        if existing is not None:
+            await session.execute(delete(ChunkRow).where(ChunkRow.document_id == existing.id))
+            existing.title = entry.title
+            existing.short_title = entry.short_title
+            existing.source_url = source_url
+            return existing
+
+        document = Document(
+            source=entry.source,
+            source_id=entry.source_id,
+            title=entry.title,
+            short_title=entry.short_title,
+            language=language,
+            version=entry.version,
+            jurisdiction=entry.jurisdiction,
+            source_url=source_url,
+            adopted_on=(
+                datetime.fromisoformat(entry.adopted_on).replace(tzinfo=UTC)
+                if entry.adopted_on
+                else None
+            ),
+        )
+        session.add(document)
+        await session.flush()
+        return document
 
 
 def index_version(manifest: CorpusManifest, embedder_name: str) -> str:

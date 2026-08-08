@@ -58,16 +58,18 @@ class Base(DeclarativeBase):
 
 
 class Document(Base):
-    """A legal act. One row per (celex_id, language, version)."""
+    """An indexed document. One row per (source, source_id, language, version)."""
 
     __tablename__ = "documents"
     __table_args__ = (
-        UniqueConstraint("celex_id", "language", "version", name="uq_document_identity"),
+        UniqueConstraint("source", "source_id", "language", "version", name="uq_document_identity"),
         CheckConstraint("version IN ('original', 'consolidated')", name="ck_document_version"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    celex_id: Mapped[str] = mapped_column(String(32), index=True)
+    source: Mapped[str] = mapped_column(String(16), default="eurlex", index=True)
+    """Which connector produced this: eurlex, boe or file."""
+    source_id: Mapped[str] = mapped_column(String(128), index=True)
     title: Mapped[str] = mapped_column(Text)
     short_title: Mapped[str] = mapped_column(String(128))
     language: Mapped[str] = mapped_column(String(2), index=True)

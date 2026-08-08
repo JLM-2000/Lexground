@@ -36,7 +36,8 @@ export interface QueryResponse {
 }
 
 export interface DocumentSummary {
-  celex_id: string;
+  source: string;
+  source_id: string;
   short_title: string;
   title: string;
   language: string;

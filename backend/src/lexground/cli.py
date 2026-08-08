@@ -15,8 +15,8 @@ from lexground.db.session import dispose_engine, init_engine, session_scope
 from lexground.evaluation.golden import load_golden_set
 from lexground.evaluation.harness import EvaluationHarness, Thresholds
 from lexground.evaluation.judge import build_judge
-from lexground.ingest.fetch import EurLexClient
 from lexground.ingest.runner import CorpusManifest, Ingestor, index_version
+from lexground.ingest.sources import BoeSource, EurLexSource, FileSource
 from lexground.main import build_query_service
 from lexground.observability.logging import configure_logging
 from lexground.retrieval.embedder import get_embedder
@@ -57,7 +57,11 @@ async def ingest(manifest_path: Path, cache_dir: Path, offline: bool) -> int:
     manifest = CorpusManifest.load(manifest_path)
     ingestor = Ingestor(
         embedder=get_embedder(settings),
-        client=EurLexClient(cache_dir=cache_dir, offline=offline),
+        sources={
+            "eurlex": EurLexSource(cache_dir=cache_dir, offline=offline),
+            "boe": BoeSource(cache_dir=cache_dir, offline=offline),
+            "file": FileSource(DATA / "uploads"),
+        },
     )
     async with session_scope() as session:
         summary = await ingestor.ingest_manifest(session, manifest)
